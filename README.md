@@ -47,7 +47,7 @@ main :: (fn() -> unit) {
   InitWindow(800, 450, "Hello Raylib from Yo!");
   SetTargetFPS(60);
 
-  while !(WindowShouldClose()), unit, {
+  while !(WindowShouldClose()), {
     BeginDrawing();
     ClearBackground(RAYWHITE);
     DrawText("Hello, World!", 190, 200, 20, DARKGRAY);
