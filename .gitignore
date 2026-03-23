@@ -11,4 +11,4 @@ a.out.c
 Thumbs.db
 
 .devenv*
-.direnv*
+.direnv*build_output.txt
