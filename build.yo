@@ -2,7 +2,13 @@ build :: import "std/build";
 
 build.project({ name: "raylib_yo", root: "./src/lib.yo" });
 
-exe :: build.executable({ name: "raylib_yo", root: "./src/main.yo" });
+raylib :: build.system_library({
+  name: "raylib",
+  pkg_config: "raylib"
+});
+
+exe :: build.executable({ name: "raylib_yo", root: "./src/main.yo", optimize: build.Optimize.ReleaseFast });
+exe.link(raylib);
 
 lib :: build.static_library({ name: "raylib_yo-lib", root: "./src/lib.yo" });
 

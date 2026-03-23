@@ -1,7 +1,19 @@
-{ println } :: import "std/fmt";
+{ InitWindow, CloseWindow, WindowShouldClose, SetTargetFPS,
+  BeginDrawing, EndDrawing, ClearBackground, DrawText,
+  RAYWHITE, DARKGRAY } :: import "./lib";
 
 main :: (fn() -> unit)({
-  println("Hello, world!");
+  InitWindow(i32(800), i32(450), "raylib_yo - Hello Raylib!");
+  SetTargetFPS(i32(60));
+
+  while !(WindowShouldClose()), {
+    BeginDrawing();
+    ClearBackground(RAYWHITE);
+    DrawText("Hello from Yo + Raylib!", i32(190), i32(200), i32(20), DARKGRAY);
+    EndDrawing();
+  };
+
+  CloseWindow();
 });
 
 export main;
