@@ -17,7 +17,7 @@ build :: import "std/build";
 
 dep :: build.dependency({ name: "raylib_yo", url: "https://github.com/shd101wyy/raylib_yo.git", ref: "v0.0.1" });
 
-raylib :: build.system_library({ name: "raylib", pkg_config: "raylib" });
+raylib :: build.system_library({ name: "raylib" });
 
 exe :: build.executable({ name: "my_app", root: "./src/main.yo" });
 exe.link(raylib);
