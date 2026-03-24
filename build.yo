@@ -1,11 +1,12 @@
 build :: import "std/build";
 
-build.project({ name: "raylib_yo", root: "./src/lib.yo" });
-
 raylib :: build.system_library({
   name: "raylib",
   defines: "NOMINMAX NOGDI NOUSER"
 });
+
+mod :: build.module({ name: "raylib_yo", root: "./src/lib.yo" });
+mod.link(raylib);
 
 exe :: build.executable({ name: "raylib_yo", root: "./src/main.yo", optimize: build.Optimize.ReleaseFast });
 exe.link(raylib);
