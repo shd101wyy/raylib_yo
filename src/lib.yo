@@ -1,1362 +1,620 @@
 // Comprehensive raylib bindings for Yo
 // Covers all core raylib types, functions, and constants.
-// Uses c_include with assigned struct types so Yo can construct/access C structs
-// while the C compiler uses raylib.h's native definitions.
-
-c_include "<raylib.h>",
-
-  // ════════════════════════════════════════════════════════════════════
-  // Types
-  // ════════════════════════════════════════════════════════════════════
-
-  (Color : Type) = struct(r : u8, g : u8, b : u8, a : u8),
-  (Vector2 : Type) = struct(x : f32, y : f32),
-  (Vector3 : Type) = struct(x : f32, y : f32, z : f32),
-  (Vector4 : Type) = struct(x : f32, y : f32, z : f32, w : f32),
-  (Matrix : Type) = struct(
-    m0 : f32, m4 : f32, m8 : f32, m12 : f32,
-    m1 : f32, m5 : f32, m9 : f32, m13 : f32,
-    m2 : f32, m6 : f32, m10 : f32, m14 : f32,
-    m3 : f32, m7 : f32, m11 : f32, m15 : f32
-  ),
-  (Rectangle : Type) = struct(x : f32, y : f32, width : f32, height : f32),
-  (Image : Type) = struct(data : *(void), width : i32, height : i32, mipmaps : i32, format : i32),
-  (Texture : Type) = struct(id : u32, width : i32, height : i32, mipmaps : i32, format : i32),
-  (RenderTexture : Type) = struct(id : u32, texture : Texture, depth : Texture),
-  (NPatchInfo : Type) = struct(source : Rectangle, left : i32, top : i32, right : i32, bottom : i32, layout : i32),
-  (GlyphInfo : Type) = struct(value : i32, offsetX : i32, offsetY : i32, advanceX : i32, image : Image),
-  (Font : Type) = struct(baseSize : i32, glyphCount : i32, glyphPadding : i32, texture : Texture, recs : *(Rectangle), glyphs : *(GlyphInfo)),
-  (Camera3D : Type) = struct(position : Vector3, target : Vector3, up : Vector3, fovy : f32, projection : i32),
-  (Camera2D : Type) = struct(offset : Vector2, target : Vector2, rotation : f32, zoom : f32),
-  (Shader : Type) = struct(id : u32, locs : *(i32)),
-  (MaterialMap : Type) = struct(texture : Texture, color : Color, value : f32),
-  (Material : Type) = struct(shader : Shader, maps : *(MaterialMap), params : Array(f32, 4)),
-  (Transform : Type) = struct(translation : Vector3, rotation : Vector4, scale : Vector3),
-  (BoneInfo : Type) = struct(name : Array(char, 32), parent : i32),
-  (ModelSkeleton : Type) = struct(boneCount : i32, bones : *(BoneInfo), bindPose : *(Transform)),
-  (Mesh : Type) = struct(
-    vertexCount : i32, triangleCount : i32,
-    vertices : *(f32), texcoords : *(f32), texcoords2 : *(f32),
-    normals : *(f32), tangents : *(f32), colors : *(u8), indices : *(u16),
-    boneCount : i32, boneIndices : *(u8), boneWeights : *(f32),
-    animVertices : *(f32), animNormals : *(f32),
-    vaoId : u32, vboId : *(u32)
-  ),
-  (Model : Type) = struct(
-    transform : Matrix,
-    meshCount : i32, materialCount : i32,
-    meshes : *(Mesh), materials : *(Material), meshMaterial : *(i32),
-    skeleton : ModelSkeleton, currentPose : *(Transform), boneMatrices : *(Matrix)
-  ),
-  (ModelAnimation : Type) = struct(name : Array(char, 32), boneCount : i32, keyframeCount : i32, keyframePoses : *(*(Transform))),
-  (Ray : Type) = struct(position : Vector3, direction : Vector3),
-  (RayCollision : Type) = struct(hit : bool, distance : f32, point : Vector3, normal : Vector3),
-  (BoundingBox : Type) = struct(min : Vector3, max : Vector3),
-  (Wave : Type) = struct(frameCount : u32, sampleRate : u32, sampleSize : u32, channels : u32, data : *(void)),
-  (AudioStream : Type) = struct(buffer : *(void), processor : *(void), sampleRate : u32, sampleSize : u32, channels : u32),
-  (Sound : Type) = struct(stream : AudioStream, frameCount : u32),
-  (Music : Type) = struct(stream : AudioStream, frameCount : u32, looping : bool, ctxType : i32, ctxData : *(void)),
-  (VrDeviceInfo : Type) = struct(
-    hResolution : i32, vResolution : i32,
-    hScreenSize : f32, vScreenSize : f32,
-    eyeToScreenDistance : f32, lensSeparationDistance : f32, interpupillaryDistance : f32,
-    lensDistortionValues : Array(f32, 4), chromaAbCorrection : Array(f32, 4)
-  ),
-  (VrStereoConfig : Type) = struct(
-    projection : Array(Matrix, 2), viewOffset : Array(Matrix, 2),
-    leftLensCenter : Array(f32, 2), rightLensCenter : Array(f32, 2),
-    leftScreenCenter : Array(f32, 2), rightScreenCenter : Array(f32, 2),
-    scale : Array(f32, 2), scaleIn : Array(f32, 2)
-  ),
-  (FilePathList : Type) = struct(capacity : u32, count : u32, paths : *(*(char))),
-  (AutomationEvent : Type) = struct(frame : u32, type : u32, params : Array(i32, 4)),
-  (AutomationEventList : Type) = struct(capacity : u32, count : u32, events : *(AutomationEvent)),
-
-  // ════════════════════════════════════════════════════════════════════
-  // Window management
-  // ════════════════════════════════════════════════════════════════════
-
-  InitWindow :
-    fn(width : i32, height : i32, title : *(char)) -> unit,
-  CloseWindow :
-    fn() -> unit,
-  WindowShouldClose :
-    fn() -> bool,
-  IsWindowReady :
-    fn() -> bool,
-  IsWindowFullscreen :
-    fn() -> bool,
-  IsWindowHidden :
-    fn() -> bool,
-  IsWindowMinimized :
-    fn() -> bool,
-  IsWindowMaximized :
-    fn() -> bool,
-  IsWindowFocused :
-    fn() -> bool,
-  IsWindowResized :
-    fn() -> bool,
-  IsWindowState :
-    fn(flag : u32) -> bool,
-  SetWindowState :
-    fn(flags : u32) -> unit,
-  ClearWindowState :
-    fn(flags : u32) -> unit,
-  ToggleFullscreen :
-    fn() -> unit,
-  ToggleBorderlessWindowed :
-    fn() -> unit,
-  MaximizeWindow :
-    fn() -> unit,
-  MinimizeWindow :
-    fn() -> unit,
-  RestoreWindow :
-    fn() -> unit,
-  SetWindowIcon :
-    fn(image : Image) -> unit,
-  SetWindowIcons :
-    fn(images : *(Image), count : i32) -> unit,
-  SetWindowTitle :
-    fn(title : *(char)) -> unit,
-  SetWindowPosition :
-    fn(x : i32, y : i32) -> unit,
-  SetWindowMonitor :
-    fn(monitor : i32) -> unit,
-  SetWindowMinSize :
-    fn(width : i32, height : i32) -> unit,
-  SetWindowMaxSize :
-    fn(width : i32, height : i32) -> unit,
-  SetWindowSize :
-    fn(width : i32, height : i32) -> unit,
-  SetWindowOpacity :
-    fn(opacity : f32) -> unit,
-  SetWindowFocused :
-    fn() -> unit,
-  GetWindowHandle :
-    fn() -> *(void),
-  GetScreenWidth :
-    fn() -> i32,
-  GetScreenHeight :
-    fn() -> i32,
-  GetRenderWidth :
-    fn() -> i32,
-  GetRenderHeight :
-    fn() -> i32,
-  GetMonitorCount :
-    fn() -> i32,
-  GetCurrentMonitor :
-    fn() -> i32,
-  GetMonitorPosition :
-    fn(monitor : i32) -> Vector2,
-  GetMonitorWidth :
-    fn(monitor : i32) -> i32,
-  GetMonitorHeight :
-    fn(monitor : i32) -> i32,
-  GetMonitorPhysicalWidth :
-    fn(monitor : i32) -> i32,
-  GetMonitorPhysicalHeight :
-    fn(monitor : i32) -> i32,
-  GetMonitorRefreshRate :
-    fn(monitor : i32) -> i32,
-  GetWindowPosition :
-    fn() -> Vector2,
-  GetWindowScaleDPI :
-    fn() -> Vector2,
-  GetMonitorName :
-    fn(monitor : i32) -> *(char),
-  SetClipboardText :
-    fn(text : *(char)) -> unit,
-  GetClipboardText :
-    fn() -> *(char),
-  GetClipboardImage :
-    fn() -> Image,
-  EnableEventWaiting :
-    fn() -> unit,
-  DisableEventWaiting :
-    fn() -> unit,
-
-  // ════════════════════════════════════════════════════════════════════
-  // Cursor
-  // ════════════════════════════════════════════════════════════════════
-
-  ShowCursor :
-    fn() -> unit,
-  HideCursor :
-    fn() -> unit,
-  IsCursorHidden :
-    fn() -> bool,
-  EnableCursor :
-    fn() -> unit,
-  DisableCursor :
-    fn() -> unit,
-  IsCursorOnScreen :
-    fn() -> bool,
-
-  // ════════════════════════════════════════════════════════════════════
-  // Drawing
-  // ════════════════════════════════════════════════════════════════════
-
-  ClearBackground :
-    fn(color : Color) -> unit,
-  BeginDrawing :
-    fn() -> unit,
-  EndDrawing :
-    fn() -> unit,
-  BeginMode2D :
-    fn(camera : Camera2D) -> unit,
-  EndMode2D :
-    fn() -> unit,
-  BeginMode3D :
-    fn(camera : Camera3D) -> unit,
-  EndMode3D :
-    fn() -> unit,
-  BeginTextureMode :
-    fn(target : RenderTexture) -> unit,
-  EndTextureMode :
-    fn() -> unit,
-  BeginShaderMode :
-    fn(shader : Shader) -> unit,
-  EndShaderMode :
-    fn() -> unit,
-  BeginBlendMode :
-    fn(mode : i32) -> unit,
-  EndBlendMode :
-    fn() -> unit,
-  BeginScissorMode :
-    fn(x : i32, y : i32, width : i32, height : i32) -> unit,
-  EndScissorMode :
-    fn() -> unit,
-  BeginVrStereoMode :
-    fn(config : VrStereoConfig) -> unit,
-  EndVrStereoMode :
-    fn() -> unit,
-
-  // ════════════════════════════════════════════════════════════════════
-  // VR
-  // ════════════════════════════════════════════════════════════════════
-
-  LoadVrStereoConfig :
-    fn(device : VrDeviceInfo) -> VrStereoConfig,
-  UnloadVrStereoConfig :
-    fn(config : VrStereoConfig) -> unit,
-
-  // ════════════════════════════════════════════════════════════════════
-  // Shader
-  // ════════════════════════════════════════════════════════════════════
-
-  LoadShader :
-    fn(vsFileName : *(char), fsFileName : *(char)) -> Shader,
-  LoadShaderFromMemory :
-    fn(vsCode : *(char), fsCode : *(char)) -> Shader,
-  IsShaderValid :
-    fn(shader : Shader) -> bool,
-  GetShaderLocation :
-    fn(shader : Shader, uniformName : *(char)) -> i32,
-  GetShaderLocationAttrib :
-    fn(shader : Shader, attribName : *(char)) -> i32,
-  SetShaderValue :
-    fn(shader : Shader, locIndex : i32, value : *(void), uniformType : i32) -> unit,
-  SetShaderValueV :
-    fn(shader : Shader, locIndex : i32, value : *(void), uniformType : i32, count : i32) -> unit,
-  SetShaderValueMatrix :
-    fn(shader : Shader, locIndex : i32, mat : Matrix) -> unit,
-  SetShaderValueTexture :
-    fn(shader : Shader, locIndex : i32, texture : Texture) -> unit,
-  UnloadShader :
-    fn(shader : Shader) -> unit,
-
-  // ════════════════════════════════════════════════════════════════════
-  // Screen-space
-  // ════════════════════════════════════════════════════════════════════
-
-  GetScreenToWorldRay :
-    fn(position : Vector2, camera : Camera3D) -> Ray,
-  GetScreenToWorldRayEx :
-    fn(position : Vector2, camera : Camera3D, width : i32, height : i32) -> Ray,
-  GetWorldToScreen :
-    fn(position : Vector3, camera : Camera3D) -> Vector2,
-  GetWorldToScreenEx :
-    fn(position : Vector3, camera : Camera3D, width : i32, height : i32) -> Vector2,
-  GetWorldToScreen2D :
-    fn(position : Vector2, camera : Camera2D) -> Vector2,
-  GetScreenToWorld2D :
-    fn(position : Vector2, camera : Camera2D) -> Vector2,
-  GetCameraMatrix :
-    fn(camera : Camera3D) -> Matrix,
-  GetCameraMatrix2D :
-    fn(camera : Camera2D) -> Matrix,
-
-  // ════════════════════════════════════════════════════════════════════
-  // Timing
-  // ════════════════════════════════════════════════════════════════════
-
-  SetTargetFPS :
-    fn(fps : i32) -> unit,
-  GetFrameTime :
-    fn() -> f32,
-  GetTime :
-    fn() -> f64,
-  GetFPS :
-    fn() -> i32,
-
-  // ════════════════════════════════════════════════════════════════════
-  // Custom frame control
-  // ════════════════════════════════════════════════════════════════════
-
-  SwapScreenBuffer :
-    fn() -> unit,
-  PollInputEvents :
-    fn() -> unit,
-  WaitTime :
-    fn(seconds : f64) -> unit,
-
-  // ════════════════════════════════════════════════════════════════════
-  // Random
-  // ════════════════════════════════════════════════════════════════════
-
-  SetRandomSeed :
-    fn(seed : u32) -> unit,
-  GetRandomValue :
-    fn(min : i32, max : i32) -> i32,
-  LoadRandomSequence :
-    fn(count : u32, min : i32, max : i32) -> *(i32),
-  UnloadRandomSequence :
-    fn(sequence : *(i32)) -> unit,
-
-  // ════════════════════════════════════════════════════════════════════
-  // Misc
-  // ════════════════════════════════════════════════════════════════════
-
-  TakeScreenshot :
-    fn(fileName : *(char)) -> unit,
-  SetConfigFlags :
-    fn(flags : u32) -> unit,
-  OpenURL :
-    fn(url : *(char)) -> unit,
-
-  // ════════════════════════════════════════════════════════════════════
-  // Logging
-  // ════════════════════════════════════════════════════════════════════
-
-  SetTraceLogLevel :
-    fn(logLevel : i32) -> unit,
-  TraceLog :
-    fn(logLevel : i32, text : *(char), ...) -> unit,
-
-  // ════════════════════════════════════════════════════════════════════
-  // Memory
-  // ════════════════════════════════════════════════════════════════════
-
-  MemAlloc :
-    fn(size : u32) -> *(void),
-  MemRealloc :
-    fn(ptr : *(void), size : u32) -> *(void),
-  MemFree :
-    fn(ptr : *(void)) -> unit,
-
-  // ════════════════════════════════════════════════════════════════════
-  // File system
-  // ════════════════════════════════════════════════════════════════════
-
-  LoadFileData :
-    fn(fileName : *(char), dataSize : *(i32)) -> *(u8),
-  UnloadFileData :
-    fn(data : *(u8)) -> unit,
-  SaveFileData :
-    fn(fileName : *(char), data : *(void), dataSize : i32) -> bool,
-  LoadFileText :
-    fn(fileName : *(char)) -> *(char),
-  UnloadFileText :
-    fn(text : *(char)) -> unit,
-  SaveFileText :
-    fn(fileName : *(char), text : *(char)) -> bool,
-  FileExists :
-    fn(fileName : *(char)) -> bool,
-  DirectoryExists :
-    fn(dirPath : *(char)) -> bool,
-  IsFileExtension :
-    fn(fileName : *(char), ext : *(char)) -> bool,
-  GetFileLength :
-    fn(fileName : *(char)) -> i32,
-  GetFileExtension :
-    fn(fileName : *(char)) -> *(char),
-  GetFileName :
-    fn(filePath : *(char)) -> *(char),
-  GetFileNameWithoutExt :
-    fn(filePath : *(char)) -> *(char),
-  GetDirectoryPath :
-    fn(filePath : *(char)) -> *(char),
-  GetPrevDirectoryPath :
-    fn(dirPath : *(char)) -> *(char),
-  GetWorkingDirectory :
-    fn() -> *(char),
-  GetApplicationDirectory :
-    fn() -> *(char),
-  MakeDirectory :
-    fn(dirPath : *(char)) -> i32,
-  ChangeDirectory :
-    fn(dir : *(char)) -> bool,
-  IsPathFile :
-    fn(path : *(char)) -> bool,
-  IsFileNameValid :
-    fn(fileName : *(char)) -> bool,
-  LoadDirectoryFiles :
-    fn(dirPath : *(char)) -> FilePathList,
-  LoadDirectoryFilesEx :
-    fn(basePath : *(char), filter : *(char), scanSubdirs : bool) -> FilePathList,
-  UnloadDirectoryFiles :
-    fn(files : FilePathList) -> unit,
-  IsFileDropped :
-    fn() -> bool,
-  LoadDroppedFiles :
-    fn() -> FilePathList,
-  UnloadDroppedFiles :
-    fn(files : FilePathList) -> unit,
-
-  // ════════════════════════════════════════════════════════════════════
-  // Keyboard input
-  // ════════════════════════════════════════════════════════════════════
-
-  IsKeyPressed :
-    fn(key : i32) -> bool,
-  IsKeyPressedRepeat :
-    fn(key : i32) -> bool,
-  IsKeyDown :
-    fn(key : i32) -> bool,
-  IsKeyReleased :
-    fn(key : i32) -> bool,
-  IsKeyUp :
-    fn(key : i32) -> bool,
-  GetKeyPressed :
-    fn() -> i32,
-  GetCharPressed :
-    fn() -> i32,
-  SetExitKey :
-    fn(key : i32) -> unit,
-
-  // ════════════════════════════════════════════════════════════════════
-  // Gamepad input
-  // ════════════════════════════════════════════════════════════════════
-
-  IsGamepadAvailable :
-    fn(gamepad : i32) -> bool,
-  GetGamepadName :
-    fn(gamepad : i32) -> *(char),
-  IsGamepadButtonPressed :
-    fn(gamepad : i32, button : i32) -> bool,
-  IsGamepadButtonDown :
-    fn(gamepad : i32, button : i32) -> bool,
-  IsGamepadButtonReleased :
-    fn(gamepad : i32, button : i32) -> bool,
-  IsGamepadButtonUp :
-    fn(gamepad : i32, button : i32) -> bool,
-  GetGamepadButtonPressed :
-    fn() -> i32,
-  GetGamepadAxisCount :
-    fn(gamepad : i32) -> i32,
-  GetGamepadAxisMovement :
-    fn(gamepad : i32, axis : i32) -> f32,
-  SetGamepadMappings :
-    fn(mappings : *(char)) -> i32,
-  SetGamepadVibration :
-    fn(gamepad : i32, leftMotor : f32, rightMotor : f32, duration : f32) -> unit,
-
-  // ════════════════════════════════════════════════════════════════════
-  // Mouse input
-  // ════════════════════════════════════════════════════════════════════
-
-  IsMouseButtonPressed :
-    fn(button : i32) -> bool,
-  IsMouseButtonDown :
-    fn(button : i32) -> bool,
-  IsMouseButtonReleased :
-    fn(button : i32) -> bool,
-  IsMouseButtonUp :
-    fn(button : i32) -> bool,
-  GetMouseX :
-    fn() -> i32,
-  GetMouseY :
-    fn() -> i32,
-  GetMousePosition :
-    fn() -> Vector2,
-  GetMouseDelta :
-    fn() -> Vector2,
-  SetMousePosition :
-    fn(x : i32, y : i32) -> unit,
-  SetMouseOffset :
-    fn(offsetX : i32, offsetY : i32) -> unit,
-  SetMouseScale :
-    fn(scaleX : f32, scaleY : f32) -> unit,
-  GetMouseWheelMove :
-    fn() -> f32,
-  GetMouseWheelMoveV :
-    fn() -> Vector2,
-  SetMouseCursor :
-    fn(cursor : i32) -> unit,
-
-  // ════════════════════════════════════════════════════════════════════
-  // Touch input
-  // ════════════════════════════════════════════════════════════════════
-
-  GetTouchX :
-    fn() -> i32,
-  GetTouchY :
-    fn() -> i32,
-  GetTouchPosition :
-    fn(index : i32) -> Vector2,
-  GetTouchPointId :
-    fn(index : i32) -> i32,
-  GetTouchPointCount :
-    fn() -> i32,
-
-  // ════════════════════════════════════════════════════════════════════
-  // Gestures
-  // ════════════════════════════════════════════════════════════════════
-
-  SetGesturesEnabled :
-    fn(flags : u32) -> unit,
-  IsGestureDetected :
-    fn(gesture : u32) -> bool,
-  GetGestureDetected :
-    fn() -> i32,
-  GetGestureHoldDuration :
-    fn() -> f32,
-  GetGestureDragVector :
-    fn() -> Vector2,
-  GetGestureDragAngle :
-    fn() -> f32,
-  GetGesturePinchVector :
-    fn() -> Vector2,
-  GetGesturePinchAngle :
-    fn() -> f32,
-
-  // ════════════════════════════════════════════════════════════════════
-  // Camera
-  // ════════════════════════════════════════════════════════════════════
-
-  UpdateCamera :
-    fn(camera : *(Camera3D), mode : i32) -> unit,
-  UpdateCameraPro :
-    fn(camera : *(Camera3D), movement : Vector3, rotation : Vector3, zoom : f32) -> unit,
-
-  // ════════════════════════════════════════════════════════════════════
-  // Basic shapes
-  // ════════════════════════════════════════════════════════════════════
-
-  SetShapesTexture :
-    fn(texture : Texture, source : Rectangle) -> unit,
-  GetShapesTexture :
-    fn() -> Texture,
-  GetShapesTextureRectangle :
-    fn() -> Rectangle,
-  DrawPixel :
-    fn(posX : i32, posY : i32, color : Color) -> unit,
-  DrawPixelV :
-    fn(position : Vector2, color : Color) -> unit,
-  DrawLine :
-    fn(startPosX : i32, startPosY : i32, endPosX : i32, endPosY : i32, color : Color) -> unit,
-  DrawLineV :
-    fn(startPos : Vector2, endPos : Vector2, color : Color) -> unit,
-  DrawLineEx :
-    fn(startPos : Vector2, endPos : Vector2, thick : f32, color : Color) -> unit,
-  DrawLineStrip :
-    fn(points : *(Vector2), pointCount : i32, color : Color) -> unit,
-  DrawLineBezier :
-    fn(startPos : Vector2, endPos : Vector2, thick : f32, color : Color) -> unit,
-  DrawCircle :
-    fn(centerX : i32, centerY : i32, radius : f32, color : Color) -> unit,
-  DrawCircleSector :
-    fn(center : Vector2, radius : f32, startAngle : f32, endAngle : f32, segments : i32, color : Color) -> unit,
-  DrawCircleSectorLines :
-    fn(center : Vector2, radius : f32, startAngle : f32, endAngle : f32, segments : i32, color : Color) -> unit,
-  DrawCircleGradient :
-    fn(centerX : i32, centerY : i32, radius : f32, inner : Color, outer : Color) -> unit,
-  DrawCircleV :
-    fn(center : Vector2, radius : f32, color : Color) -> unit,
-  DrawCircleLines :
-    fn(centerX : i32, centerY : i32, radius : f32, color : Color) -> unit,
-  DrawCircleLinesV :
-    fn(center : Vector2, radius : f32, color : Color) -> unit,
-  DrawEllipse :
-    fn(centerX : i32, centerY : i32, radiusH : f32, radiusV : f32, color : Color) -> unit,
-  DrawEllipseLines :
-    fn(centerX : i32, centerY : i32, radiusH : f32, radiusV : f32, color : Color) -> unit,
-  DrawRing :
-    fn(center : Vector2, innerRadius : f32, outerRadius : f32, startAngle : f32, endAngle : f32, segments : i32, color : Color) -> unit,
-  DrawRingLines :
-    fn(center : Vector2, innerRadius : f32, outerRadius : f32, startAngle : f32, endAngle : f32, segments : i32, color : Color) -> unit,
-  DrawRectangle :
-    fn(posX : i32, posY : i32, width : i32, height : i32, color : Color) -> unit,
-  DrawRectangleV :
-    fn(position : Vector2, size : Vector2, color : Color) -> unit,
-  DrawRectangleRec :
-    fn(rec : Rectangle, color : Color) -> unit,
-  DrawRectanglePro :
-    fn(rec : Rectangle, origin : Vector2, rotation : f32, color : Color) -> unit,
-  DrawRectangleGradientV :
-    fn(posX : i32, posY : i32, width : i32, height : i32, top : Color, bottom : Color) -> unit,
-  DrawRectangleGradientH :
-    fn(posX : i32, posY : i32, width : i32, height : i32, left : Color, right : Color) -> unit,
-  DrawRectangleGradientEx :
-    fn(rec : Rectangle, topLeft : Color, bottomLeft : Color, topRight : Color, bottomRight : Color) -> unit,
-  DrawRectangleLines :
-    fn(posX : i32, posY : i32, width : i32, height : i32, color : Color) -> unit,
-  DrawRectangleLinesEx :
-    fn(rec : Rectangle, lineThick : f32, color : Color) -> unit,
-  DrawRectangleRounded :
-    fn(rec : Rectangle, roundness : f32, segments : i32, color : Color) -> unit,
-  DrawRectangleRoundedLines :
-    fn(rec : Rectangle, roundness : f32, segments : i32, color : Color) -> unit,
-  DrawRectangleRoundedLinesEx :
-    fn(rec : Rectangle, roundness : f32, segments : i32, lineThick : f32, color : Color) -> unit,
-  DrawTriangle :
-    fn(v1 : Vector2, v2 : Vector2, v3 : Vector2, color : Color) -> unit,
-  DrawTriangleLines :
-    fn(v1 : Vector2, v2 : Vector2, v3 : Vector2, color : Color) -> unit,
-  DrawTriangleFan :
-    fn(points : *(Vector2), pointCount : i32, color : Color) -> unit,
-  DrawTriangleStrip :
-    fn(points : *(Vector2), pointCount : i32, color : Color) -> unit,
-  DrawPoly :
-    fn(center : Vector2, sides : i32, radius : f32, rotation : f32, color : Color) -> unit,
-  DrawPolyLines :
-    fn(center : Vector2, sides : i32, radius : f32, rotation : f32, color : Color) -> unit,
-  DrawPolyLinesEx :
-    fn(center : Vector2, sides : i32, radius : f32, rotation : f32, lineThick : f32, color : Color) -> unit,
-
-  // ════════════════════════════════════════════════════════════════════
-  // Splines
-  // ════════════════════════════════════════════════════════════════════
-
-  DrawSplineLinear :
-    fn(points : *(Vector2), pointCount : i32, thick : f32, color : Color) -> unit,
-  DrawSplineBasis :
-    fn(points : *(Vector2), pointCount : i32, thick : f32, color : Color) -> unit,
-  DrawSplineCatmullRom :
-    fn(points : *(Vector2), pointCount : i32, thick : f32, color : Color) -> unit,
-  DrawSplineBezierQuadratic :
-    fn(points : *(Vector2), pointCount : i32, thick : f32, color : Color) -> unit,
-  DrawSplineBezierCubic :
-    fn(points : *(Vector2), pointCount : i32, thick : f32, color : Color) -> unit,
-  DrawSplineSegmentLinear :
-    fn(p1 : Vector2, p2 : Vector2, thick : f32, color : Color) -> unit,
-  DrawSplineSegmentBasis :
-    fn(p1 : Vector2, p2 : Vector2, p3 : Vector2, p4 : Vector2, thick : f32, color : Color) -> unit,
-  DrawSplineSegmentCatmullRom :
-    fn(p1 : Vector2, p2 : Vector2, p3 : Vector2, p4 : Vector2, thick : f32, color : Color) -> unit,
-  DrawSplineSegmentBezierQuadratic :
-    fn(p1 : Vector2, c2 : Vector2, p3 : Vector2, thick : f32, color : Color) -> unit,
-  DrawSplineSegmentBezierCubic :
-    fn(p1 : Vector2, c2 : Vector2, c3 : Vector2, p4 : Vector2, thick : f32, color : Color) -> unit,
-  GetSplinePointLinear :
-    fn(startPos : Vector2, endPos : Vector2, t : f32) -> Vector2,
-  GetSplinePointBasis :
-    fn(p1 : Vector2, p2 : Vector2, p3 : Vector2, p4 : Vector2, t : f32) -> Vector2,
-  GetSplinePointCatmullRom :
-    fn(p1 : Vector2, p2 : Vector2, p3 : Vector2, p4 : Vector2, t : f32) -> Vector2,
-  GetSplinePointBezierQuad :
-    fn(p1 : Vector2, c2 : Vector2, p3 : Vector2, t : f32) -> Vector2,
-  GetSplinePointBezierCubic :
-    fn(p1 : Vector2, c2 : Vector2, c3 : Vector2, p4 : Vector2, t : f32) -> Vector2,
-
-  // ════════════════════════════════════════════════════════════════════
-  // Shape collision
-  // ════════════════════════════════════════════════════════════════════
-
-  CheckCollisionRecs :
-    fn(rec1 : Rectangle, rec2 : Rectangle) -> bool,
-  CheckCollisionCircles :
-    fn(center1 : Vector2, radius1 : f32, center2 : Vector2, radius2 : f32) -> bool,
-  CheckCollisionCircleRec :
-    fn(center : Vector2, radius : f32, rec : Rectangle) -> bool,
-  CheckCollisionCircleLine :
-    fn(center : Vector2, radius : f32, p1 : Vector2, p2 : Vector2) -> bool,
-  CheckCollisionPointRec :
-    fn(point : Vector2, rec : Rectangle) -> bool,
-  CheckCollisionPointCircle :
-    fn(point : Vector2, center : Vector2, radius : f32) -> bool,
-  CheckCollisionPointTriangle :
-    fn(point : Vector2, p1 : Vector2, p2 : Vector2, p3 : Vector2) -> bool,
-  CheckCollisionPointLine :
-    fn(point : Vector2, p1 : Vector2, p2 : Vector2, threshold : i32) -> bool,
-  CheckCollisionPointPoly :
-    fn(point : Vector2, points : *(Vector2), pointCount : i32) -> bool,
-  CheckCollisionLines :
-    fn(startPos1 : Vector2, endPos1 : Vector2, startPos2 : Vector2, endPos2 : Vector2, collisionPoint : *(Vector2)) -> bool,
-  GetCollisionRec :
-    fn(rec1 : Rectangle, rec2 : Rectangle) -> Rectangle,
-
-  // ════════════════════════════════════════════════════════════════════
-  // Image loading
-  // ════════════════════════════════════════════════════════════════════
-
-  LoadImage :
-    fn(fileName : *(char)) -> Image,
-  LoadImageRaw :
-    fn(fileName : *(char), width : i32, height : i32, format : i32, headerSize : i32) -> Image,
-  LoadImageAnim :
-    fn(fileName : *(char), frames : *(i32)) -> Image,
-  LoadImageAnimFromMemory :
-    fn(fileType : *(char), fileData : *(u8), dataSize : i32, frames : *(i32)) -> Image,
-  LoadImageFromMemory :
-    fn(fileType : *(char), fileData : *(u8), dataSize : i32) -> Image,
-  LoadImageFromTexture :
-    fn(texture : Texture) -> Image,
-  LoadImageFromScreen :
-    fn() -> Image,
-  IsImageValid :
-    fn(image : Image) -> bool,
-  UnloadImage :
-    fn(image : Image) -> unit,
-  ExportImage :
-    fn(image : Image, fileName : *(char)) -> bool,
-  ExportImageToMemory :
-    fn(image : Image, fileType : *(char), dataSize : *(i32)) -> *(u8),
-  ExportImageAsCode :
-    fn(image : Image, fileName : *(char)) -> bool,
-
-  // ════════════════════════════════════════════════════════════════════
-  // Image generation
-  // ════════════════════════════════════════════════════════════════════
-
-  GenImageColor :
-    fn(width : i32, height : i32, color : Color) -> Image,
-  GenImageGradientLinear :
-    fn(width : i32, height : i32, direction : i32, start : Color, end : Color) -> Image,
-  GenImageGradientRadial :
-    fn(width : i32, height : i32, density : f32, inner : Color, outer : Color) -> Image,
-  GenImageGradientSquare :
-    fn(width : i32, height : i32, density : f32, inner : Color, outer : Color) -> Image,
-  GenImageChecked :
-    fn(width : i32, height : i32, checksX : i32, checksY : i32, col1 : Color, col2 : Color) -> Image,
-  GenImageWhiteNoise :
-    fn(width : i32, height : i32, factor : f32) -> Image,
-  GenImagePerlinNoise :
-    fn(width : i32, height : i32, offsetX : i32, offsetY : i32, scale : f32) -> Image,
-  GenImageCellular :
-    fn(width : i32, height : i32, tileSize : i32) -> Image,
-  GenImageText :
-    fn(width : i32, height : i32, text : *(char)) -> Image,
-
-  // ════════════════════════════════════════════════════════════════════
-  // Image manipulation
-  // ════════════════════════════════════════════════════════════════════
-
-  ImageCopy :
-    fn(image : Image) -> Image,
-  ImageFromImage :
-    fn(image : Image, rec : Rectangle) -> Image,
-  ImageFromChannel :
-    fn(image : Image, selectedChannel : i32) -> Image,
-  ImageText :
-    fn(text : *(char), fontSize : i32, color : Color) -> Image,
-  ImageTextEx :
-    fn(font : Font, text : *(char), fontSize : f32, spacing : f32, tint : Color) -> Image,
-  ImageFormat :
-    fn(image : *(Image), newFormat : i32) -> unit,
-  ImageToPOT :
-    fn(image : *(Image), fill : Color) -> unit,
-  ImageCrop :
-    fn(image : *(Image), crop : Rectangle) -> unit,
-  ImageAlphaCrop :
-    fn(image : *(Image), threshold : f32) -> unit,
-  ImageAlphaClear :
-    fn(image : *(Image), color : Color, threshold : f32) -> unit,
-  ImageAlphaMask :
-    fn(image : *(Image), alphaMask : Image) -> unit,
-  ImageAlphaPremultiply :
-    fn(image : *(Image)) -> unit,
-  ImageBlurGaussian :
-    fn(image : *(Image), blurSize : i32) -> unit,
-  ImageResize :
-    fn(image : *(Image), newWidth : i32, newHeight : i32) -> unit,
-  ImageResizeNN :
-    fn(image : *(Image), newWidth : i32, newHeight : i32) -> unit,
-  ImageResizeCanvas :
-    fn(image : *(Image), newWidth : i32, newHeight : i32, offsetX : i32, offsetY : i32, fill : Color) -> unit,
-  ImageMipmaps :
-    fn(image : *(Image)) -> unit,
-  ImageDither :
-    fn(image : *(Image), rBpp : i32, gBpp : i32, bBpp : i32, aBpp : i32) -> unit,
-  ImageFlipVertical :
-    fn(image : *(Image)) -> unit,
-  ImageFlipHorizontal :
-    fn(image : *(Image)) -> unit,
-  ImageRotate :
-    fn(image : *(Image), degrees : i32) -> unit,
-  ImageRotateCW :
-    fn(image : *(Image)) -> unit,
-  ImageRotateCCW :
-    fn(image : *(Image)) -> unit,
-  ImageColorTint :
-    fn(image : *(Image), color : Color) -> unit,
-  ImageColorInvert :
-    fn(image : *(Image)) -> unit,
-  ImageColorGrayscale :
-    fn(image : *(Image)) -> unit,
-  ImageColorContrast :
-    fn(image : *(Image), contrast : f32) -> unit,
-  ImageColorBrightness :
-    fn(image : *(Image), brightness : i32) -> unit,
-  ImageColorReplace :
-    fn(image : *(Image), color : Color, replace : Color) -> unit,
-  LoadImageColors :
-    fn(image : Image) -> *(Color),
-  LoadImagePalette :
-    fn(image : Image, maxPaletteSize : i32, colorCount : *(i32)) -> *(Color),
-  UnloadImageColors :
-    fn(colors : *(Color)) -> unit,
-  UnloadImagePalette :
-    fn(colors : *(Color)) -> unit,
-  GetImageAlphaBorder :
-    fn(image : Image, threshold : f32) -> Rectangle,
-  GetImageColor :
-    fn(image : Image, x : i32, y : i32) -> Color,
-
-  // ════════════════════════════════════════════════════════════════════
-  // Image drawing
-  // ════════════════════════════════════════════════════════════════════
-
-  ImageClearBackground :
-    fn(dst : *(Image), color : Color) -> unit,
-  ImageDrawPixel :
-    fn(dst : *(Image), posX : i32, posY : i32, color : Color) -> unit,
-  ImageDrawPixelV :
-    fn(dst : *(Image), position : Vector2, color : Color) -> unit,
-  ImageDrawLine :
-    fn(dst : *(Image), startPosX : i32, startPosY : i32, endPosX : i32, endPosY : i32, color : Color) -> unit,
-  ImageDrawLineV :
-    fn(dst : *(Image), start : Vector2, end : Vector2, color : Color) -> unit,
-  ImageDrawLineEx :
-    fn(dst : *(Image), start : Vector2, end : Vector2, thick : i32, color : Color) -> unit,
-  ImageDrawCircle :
-    fn(dst : *(Image), centerX : i32, centerY : i32, radius : i32, color : Color) -> unit,
-  ImageDrawCircleV :
-    fn(dst : *(Image), center : Vector2, radius : i32, color : Color) -> unit,
-  ImageDrawCircleLines :
-    fn(dst : *(Image), centerX : i32, centerY : i32, radius : i32, color : Color) -> unit,
-  ImageDrawCircleLinesV :
-    fn(dst : *(Image), center : Vector2, radius : i32, color : Color) -> unit,
-  ImageDrawRectangle :
-    fn(dst : *(Image), posX : i32, posY : i32, width : i32, height : i32, color : Color) -> unit,
-  ImageDrawRectangleV :
-    fn(dst : *(Image), position : Vector2, size : Vector2, color : Color) -> unit,
-  ImageDrawRectangleRec :
-    fn(dst : *(Image), rec : Rectangle, color : Color) -> unit,
-  ImageDrawRectangleLines :
-    fn(dst : *(Image), rec : Rectangle, thick : i32, color : Color) -> unit,
-  ImageDrawTriangle :
-    fn(dst : *(Image), v1 : Vector2, v2 : Vector2, v3 : Vector2, color : Color) -> unit,
-  ImageDrawTriangleEx :
-    fn(dst : *(Image), v1 : Vector2, v2 : Vector2, v3 : Vector2, c1 : Color, c2 : Color, c3 : Color) -> unit,
-  ImageDrawTriangleLines :
-    fn(dst : *(Image), v1 : Vector2, v2 : Vector2, v3 : Vector2, color : Color) -> unit,
-  ImageDraw :
-    fn(dst : *(Image), src : Image, srcRec : Rectangle, dstRec : Rectangle, tint : Color) -> unit,
-  ImageDrawText :
-    fn(dst : *(Image), text : *(char), posX : i32, posY : i32, fontSize : i32, color : Color) -> unit,
-  ImageDrawTextEx :
-    fn(dst : *(Image), font : Font, text : *(char), position : Vector2, fontSize : f32, spacing : f32, tint : Color) -> unit,
-
-  // ════════════════════════════════════════════════════════════════════
-  // Texture loading
-  // ════════════════════════════════════════════════════════════════════
-
-  LoadTexture :
-    fn(fileName : *(char)) -> Texture,
-  LoadTextureFromImage :
-    fn(image : Image) -> Texture,
-  LoadTextureCubemap :
-    fn(image : Image, layout : i32) -> Texture,
-  LoadRenderTexture :
-    fn(width : i32, height : i32) -> RenderTexture,
-  IsTextureValid :
-    fn(texture : Texture) -> bool,
-  UnloadTexture :
-    fn(texture : Texture) -> unit,
-  IsRenderTextureValid :
-    fn(target : RenderTexture) -> bool,
-  UnloadRenderTexture :
-    fn(target : RenderTexture) -> unit,
-  UpdateTexture :
-    fn(texture : Texture, pixels : *(void)) -> unit,
-  UpdateTextureRec :
-    fn(texture : Texture, rec : Rectangle, pixels : *(void)) -> unit,
-
-  // ════════════════════════════════════════════════════════════════════
-  // Texture configuration
-  // ════════════════════════════════════════════════════════════════════
-
-  GenTextureMipmaps :
-    fn(texture : *(Texture)) -> unit,
-  SetTextureFilter :
-    fn(texture : Texture, filter : i32) -> unit,
-  SetTextureWrap :
-    fn(texture : Texture, wrap : i32) -> unit,
-
-  // ════════════════════════════════════════════════════════════════════
-  // Texture drawing
-  // ════════════════════════════════════════════════════════════════════
-
-  DrawTexture :
-    fn(texture : Texture, posX : i32, posY : i32, tint : Color) -> unit,
-  DrawTextureV :
-    fn(texture : Texture, position : Vector2, tint : Color) -> unit,
-  DrawTextureEx :
-    fn(texture : Texture, position : Vector2, rotation : f32, scale : f32, tint : Color) -> unit,
-  DrawTextureRec :
-    fn(texture : Texture, source : Rectangle, position : Vector2, tint : Color) -> unit,
-  DrawTexturePro :
-    fn(texture : Texture, source : Rectangle, dest : Rectangle, origin : Vector2, rotation : f32, tint : Color) -> unit,
-  DrawTextureNPatch :
-    fn(texture : Texture, nPatchInfo : NPatchInfo, dest : Rectangle, origin : Vector2, rotation : f32, tint : Color) -> unit,
-
-  // ════════════════════════════════════════════════════════════════════
-  // Color functions
-  // ════════════════════════════════════════════════════════════════════
-
-  ColorIsEqual :
-    fn(col1 : Color, col2 : Color) -> bool,
-  Fade :
-    fn(color : Color, alpha : f32) -> Color,
-  ColorToInt :
-    fn(color : Color) -> i32,
-  ColorNormalize :
-    fn(color : Color) -> Vector4,
-  ColorFromNormalized :
-    fn(normalized : Vector4) -> Color,
-  ColorToHSV :
-    fn(color : Color) -> Vector3,
-  ColorFromHSV :
-    fn(hue : f32, saturation : f32, value : f32) -> Color,
-  ColorTint :
-    fn(color : Color, tint : Color) -> Color,
-  ColorBrightness :
-    fn(color : Color, factor : f32) -> Color,
-  ColorContrast :
-    fn(color : Color, contrast : f32) -> Color,
-  ColorAlpha :
-    fn(color : Color, alpha : f32) -> Color,
-  ColorAlphaBlend :
-    fn(dst : Color, src : Color, tint : Color) -> Color,
-  ColorLerp :
-    fn(color1 : Color, color2 : Color, factor : f32) -> Color,
-  GetColor :
-    fn(hexValue : u32) -> Color,
-  GetPixelColor :
-    fn(srcPtr : *(void), format : i32) -> Color,
-  SetPixelColor :
-    fn(dstPtr : *(void), color : Color, format : i32) -> unit,
-  GetPixelDataSize :
-    fn(width : i32, height : i32, format : i32) -> i32,
-
-  // ════════════════════════════════════════════════════════════════════
-  // Font loading
-  // ════════════════════════════════════════════════════════════════════
-
-  GetFontDefault :
-    fn() -> Font,
-  LoadFont :
-    fn(fileName : *(char)) -> Font,
-  LoadFontEx :
-    fn(fileName : *(char), fontSize : i32, codepoints : *(i32), codepointCount : i32) -> Font,
-  LoadFontFromImage :
-    fn(image : Image, key : Color, firstChar : i32) -> Font,
-  LoadFontFromMemory :
-    fn(fileType : *(char), fileData : *(u8), dataSize : i32, fontSize : i32, codepoints : *(i32), codepointCount : i32) -> Font,
-  IsFontValid :
-    fn(font : Font) -> bool,
-  UnloadFont :
-    fn(font : Font) -> unit,
-  ExportFontAsCode :
-    fn(font : Font, fileName : *(char)) -> bool,
-
-  // ════════════════════════════════════════════════════════════════════
-  // Text drawing
-  // ════════════════════════════════════════════════════════════════════
-
-  DrawFPS :
-    fn(posX : i32, posY : i32) -> unit,
-  DrawText :
-    fn(text : *(char), posX : i32, posY : i32, fontSize : i32, color : Color) -> unit,
-  DrawTextEx :
-    fn(font : Font, text : *(char), position : Vector2, fontSize : f32, spacing : f32, tint : Color) -> unit,
-  DrawTextPro :
-    fn(font : Font, text : *(char), position : Vector2, origin : Vector2, rotation : f32, fontSize : f32, spacing : f32, tint : Color) -> unit,
-  DrawTextCodepoint :
-    fn(font : Font, codepoint : i32, position : Vector2, fontSize : f32, tint : Color) -> unit,
-  DrawTextCodepoints :
-    fn(font : Font, codepoints : *(i32), codepointCount : i32, position : Vector2, fontSize : f32, spacing : f32, tint : Color) -> unit,
-
-  // ════════════════════════════════════════════════════════════════════
-  // Text info
-  // ════════════════════════════════════════════════════════════════════
-
-  SetTextLineSpacing :
-    fn(spacing : i32) -> unit,
-  MeasureText :
-    fn(text : *(char), fontSize : i32) -> i32,
-  MeasureTextEx :
-    fn(font : Font, text : *(char), fontSize : f32, spacing : f32) -> Vector2,
-  GetGlyphIndex :
-    fn(font : Font, codepoint : i32) -> i32,
-  GetGlyphInfo :
-    fn(font : Font, codepoint : i32) -> GlyphInfo,
-  GetGlyphAtlasRec :
-    fn(font : Font, codepoint : i32) -> Rectangle,
-
-  // ════════════════════════════════════════════════════════════════════
-  // Text strings
-  // ════════════════════════════════════════════════════════════════════
-
-  TextFormat :
-    fn(text : *(char), ...) -> *(char),
-  TextSubtext :
-    fn(text : *(char), position : i32, length : i32) -> *(char),
-  TextReplace :
-    fn(text : *(char), replace : *(char), by : *(char)) -> *(char),
-  TextInsert :
-    fn(text : *(char), insert : *(char), position : i32) -> *(char),
-  TextJoin :
-    fn(textList : *(*(char)), count : i32, delimiter : *(char)) -> *(char),
-  TextSplit :
-    fn(text : *(char), delimiter : char, count : *(i32)) -> *(*(char)),
-  TextAppend :
-    fn(text : *(char), append : *(char), position : *(i32)) -> unit,
-  TextFindIndex :
-    fn(text : *(char), find : *(char)) -> i32,
-  TextToUpper :
-    fn(text : *(char)) -> *(char),
-  TextToLower :
-    fn(text : *(char)) -> *(char),
-  TextToPascal :
-    fn(text : *(char)) -> *(char),
-  TextToSnake :
-    fn(text : *(char)) -> *(char),
-  TextToCamel :
-    fn(text : *(char)) -> *(char),
-  TextToInteger :
-    fn(text : *(char)) -> i32,
-  TextToFloat :
-    fn(text : *(char)) -> f32,
-  TextLength :
-    fn(text : *(char)) -> u32,
-  TextIsEqual :
-    fn(text1 : *(char), text2 : *(char)) -> bool,
-  TextCopy :
-    fn(dst : *(char), src : *(char)) -> i32,
-
-  // ════════════════════════════════════════════════════════════════════
-  // 3D shapes
-  // ════════════════════════════════════════════════════════════════════
-
-  DrawLine3D :
-    fn(startPos : Vector3, endPos : Vector3, color : Color) -> unit,
-  DrawPoint3D :
-    fn(position : Vector3, color : Color) -> unit,
-  DrawCircle3D :
-    fn(center : Vector3, radius : f32, rotationAxis : Vector3, rotationAngle : f32, color : Color) -> unit,
-  DrawTriangle3D :
-    fn(v1 : Vector3, v2 : Vector3, v3 : Vector3, color : Color) -> unit,
-  DrawTriangleStrip3D :
-    fn(points : *(Vector3), pointCount : i32, color : Color) -> unit,
-  DrawCube :
-    fn(position : Vector3, width : f32, height : f32, length : f32, color : Color) -> unit,
-  DrawCubeV :
-    fn(position : Vector3, size : Vector3, color : Color) -> unit,
-  DrawCubeWires :
-    fn(position : Vector3, width : f32, height : f32, length : f32, color : Color) -> unit,
-  DrawCubeWiresV :
-    fn(position : Vector3, size : Vector3, color : Color) -> unit,
-  DrawSphere :
-    fn(centerPos : Vector3, radius : f32, color : Color) -> unit,
-  DrawSphereEx :
-    fn(centerPos : Vector3, radius : f32, rings : i32, slices : i32, color : Color) -> unit,
-  DrawSphereWires :
-    fn(centerPos : Vector3, radius : f32, rings : i32, slices : i32, color : Color) -> unit,
-  DrawCylinder :
-    fn(position : Vector3, radiusTop : f32, radiusBottom : f32, height : f32, slices : i32, color : Color) -> unit,
-  DrawCylinderEx :
-    fn(startPos : Vector3, endPos : Vector3, startRadius : f32, endRadius : f32, sides : i32, color : Color) -> unit,
-  DrawCylinderWires :
-    fn(position : Vector3, radiusTop : f32, radiusBottom : f32, height : f32, slices : i32, color : Color) -> unit,
-  DrawCylinderWiresEx :
-    fn(startPos : Vector3, endPos : Vector3, startRadius : f32, endRadius : f32, sides : i32, color : Color) -> unit,
-  DrawCapsule :
-    fn(startPos : Vector3, endPos : Vector3, radius : f32, slices : i32, rings : i32, color : Color) -> unit,
-  DrawCapsuleWires :
-    fn(startPos : Vector3, endPos : Vector3, radius : f32, slices : i32, rings : i32, color : Color) -> unit,
-  DrawPlane :
-    fn(centerPos : Vector3, size : Vector2, color : Color) -> unit,
-  DrawRay :
-    fn(ray : Ray, color : Color) -> unit,
-  DrawGrid :
-    fn(slices : i32, spacing : f32) -> unit,
-
-  // ════════════════════════════════════════════════════════════════════
-  // Model management
-  // ════════════════════════════════════════════════════════════════════
-
-  LoadModel :
-    fn(fileName : *(char)) -> Model,
-  LoadModelFromMesh :
-    fn(mesh : Mesh) -> Model,
-  IsModelValid :
-    fn(model : Model) -> bool,
-  UnloadModel :
-    fn(model : Model) -> unit,
-  GetModelBoundingBox :
-    fn(model : Model) -> BoundingBox,
-
-  // ════════════════════════════════════════════════════════════════════
-  // Model drawing
-  // ════════════════════════════════════════════════════════════════════
-
-  DrawModel :
-    fn(model : Model, position : Vector3, scale : f32, tint : Color) -> unit,
-  DrawModelEx :
-    fn(model : Model, position : Vector3, rotationAxis : Vector3, rotationAngle : f32, scale : Vector3, tint : Color) -> unit,
-  DrawModelWires :
-    fn(model : Model, position : Vector3, scale : f32, tint : Color) -> unit,
-  DrawModelWiresEx :
-    fn(model : Model, position : Vector3, rotationAxis : Vector3, rotationAngle : f32, scale : Vector3, tint : Color) -> unit,
-  DrawBoundingBox :
-    fn(box : BoundingBox, color : Color) -> unit,
-  DrawBillboard :
-    fn(camera : Camera3D, texture : Texture, position : Vector3, scale : f32, tint : Color) -> unit,
-  DrawBillboardRec :
-    fn(camera : Camera3D, texture : Texture, source : Rectangle, position : Vector3, size : Vector2, tint : Color) -> unit,
-  DrawBillboardPro :
-    fn(camera : Camera3D, texture : Texture, source : Rectangle, position : Vector3, up : Vector3, size : Vector2, origin : Vector2, rotation : f32, tint : Color) -> unit,
-
-  // ════════════════════════════════════════════════════════════════════
-  // Mesh management
-  // ════════════════════════════════════════════════════════════════════
-
-  UploadMesh :
-    fn(mesh : *(Mesh), dynamic : bool) -> unit,
-  UpdateMeshBuffer :
-    fn(mesh : Mesh, index : i32, data : *(void), dataSize : i32, offset : i32) -> unit,
-  UnloadMesh :
-    fn(mesh : Mesh) -> unit,
-  DrawMesh :
-    fn(mesh : Mesh, material : Material, transform : Matrix) -> unit,
-  DrawMeshInstanced :
-    fn(mesh : Mesh, material : Material, transforms : *(Matrix), instances : i32) -> unit,
-  GetMeshBoundingBox :
-    fn(mesh : Mesh) -> BoundingBox,
-  GenMeshTangents :
-    fn(mesh : *(Mesh)) -> unit,
-  ExportMesh :
-    fn(mesh : Mesh, fileName : *(char)) -> bool,
-  ExportMeshAsCode :
-    fn(mesh : Mesh, fileName : *(char)) -> bool,
-
-  // ════════════════════════════════════════════════════════════════════
-  // Mesh generation
-  // ════════════════════════════════════════════════════════════════════
-
-  GenMeshPoly :
-    fn(sides : i32, radius : f32) -> Mesh,
-  GenMeshPlane :
-    fn(width : f32, length : f32, resX : i32, resZ : i32) -> Mesh,
-  GenMeshCube :
-    fn(width : f32, height : f32, length : f32) -> Mesh,
-  GenMeshSphere :
-    fn(radius : f32, rings : i32, slices : i32) -> Mesh,
-  GenMeshHemiSphere :
-    fn(radius : f32, rings : i32, slices : i32) -> Mesh,
-  GenMeshCylinder :
-    fn(radius : f32, height : f32, slices : i32) -> Mesh,
-  GenMeshCone :
-    fn(radius : f32, height : f32, slices : i32) -> Mesh,
-  GenMeshTorus :
-    fn(radius : f32, size : f32, radSeg : i32, sides : i32) -> Mesh,
-  GenMeshKnot :
-    fn(radius : f32, size : f32, radSeg : i32, sides : i32) -> Mesh,
-  GenMeshHeightmap :
-    fn(heightmap : Image, size : Vector3) -> Mesh,
-  GenMeshCubicmap :
-    fn(cubicmap : Image, cubeSize : Vector3) -> Mesh,
-
-  // ════════════════════════════════════════════════════════════════════
-  // Material management
-  // ════════════════════════════════════════════════════════════════════
-
-  LoadMaterials :
-    fn(fileName : *(char), materialCount : *(i32)) -> *(Material),
-  LoadMaterialDefault :
-    fn() -> Material,
-  IsMaterialValid :
-    fn(material : Material) -> bool,
-  UnloadMaterial :
-    fn(material : Material) -> unit,
-  SetMaterialTexture :
-    fn(material : *(Material), mapType : i32, texture : Texture) -> unit,
-  SetModelMeshMaterial :
-    fn(model : *(Model), meshId : i32, materialId : i32) -> unit,
-
-  // ════════════════════════════════════════════════════════════════════
-  // Model animation
-  // ════════════════════════════════════════════════════════════════════
-
-  LoadModelAnimations :
-    fn(fileName : *(char), animCount : *(i32)) -> *(ModelAnimation),
-  UpdateModelAnimation :
-    fn(model : Model, anim : ModelAnimation, frame : i32) -> unit,
-  UnloadModelAnimations :
-    fn(animations : *(ModelAnimation), animCount : i32) -> unit,
-  IsModelAnimationValid :
-    fn(model : Model, anim : ModelAnimation) -> bool,
-
-  // ════════════════════════════════════════════════════════════════════
-  // 3D collision
-  // ════════════════════════════════════════════════════════════════════
-
-  CheckCollisionSpheres :
-    fn(center1 : Vector3, radius1 : f32, center2 : Vector3, radius2 : f32) -> bool,
-  CheckCollisionBoxes :
-    fn(box1 : BoundingBox, box2 : BoundingBox) -> bool,
-  CheckCollisionBoxSphere :
-    fn(box : BoundingBox, center : Vector3, radius : f32) -> bool,
-  GetRayCollisionSphere :
-    fn(ray : Ray, center : Vector3, radius : f32) -> RayCollision,
-  GetRayCollisionBox :
-    fn(ray : Ray, box : BoundingBox) -> RayCollision,
-  GetRayCollisionMesh :
-    fn(ray : Ray, mesh : Mesh, transform : Matrix) -> RayCollision,
-  GetRayCollisionTriangle :
-    fn(ray : Ray, p1 : Vector3, p2 : Vector3, p3 : Vector3) -> RayCollision,
-  GetRayCollisionQuad :
-    fn(ray : Ray, p1 : Vector3, p2 : Vector3, p3 : Vector3, p4 : Vector3) -> RayCollision,
-
-  // ════════════════════════════════════════════════════════════════════
-  // Audio
-  // ════════════════════════════════════════════════════════════════════
-
-  InitAudioDevice :
-    fn() -> unit,
-  CloseAudioDevice :
-    fn() -> unit,
-  IsAudioDeviceReady :
-    fn() -> bool,
-  SetMasterVolume :
-    fn(volume : f32) -> unit,
-  GetMasterVolume :
-    fn() -> f32,
-  LoadWave :
-    fn(fileName : *(char)) -> Wave,
-  LoadWaveFromMemory :
-    fn(fileType : *(char), fileData : *(u8), dataSize : i32) -> Wave,
-  IsWaveValid :
-    fn(wave : Wave) -> bool,
-  LoadSound :
-    fn(fileName : *(char)) -> Sound,
-  LoadSoundFromWave :
-    fn(wave : Wave) -> Sound,
-  LoadSoundAlias :
-    fn(source : Sound) -> Sound,
-  IsSoundValid :
-    fn(sound : Sound) -> bool,
-  UpdateSound :
-    fn(sound : Sound, data : *(void), sampleCount : i32) -> unit,
-  UnloadWave :
-    fn(wave : Wave) -> unit,
-  UnloadSound :
-    fn(sound : Sound) -> unit,
-  UnloadSoundAlias :
-    fn(alias : Sound) -> unit,
-  ExportWave :
-    fn(wave : Wave, fileName : *(char)) -> bool,
-  ExportWaveAsCode :
-    fn(wave : Wave, fileName : *(char)) -> bool,
-  PlaySound :
-    fn(sound : Sound) -> unit,
-  StopSound :
-    fn(sound : Sound) -> unit,
-  PauseSound :
-    fn(sound : Sound) -> unit,
-  ResumeSound :
-    fn(sound : Sound) -> unit,
-  IsSoundPlaying :
-    fn(sound : Sound) -> bool,
-  SetSoundVolume :
-    fn(sound : Sound, volume : f32) -> unit,
-  SetSoundPitch :
-    fn(sound : Sound, pitch : f32) -> unit,
-  SetSoundPan :
-    fn(sound : Sound, pan : f32) -> unit,
-  WaveCopy :
-    fn(wave : Wave) -> Wave,
-  WaveCrop :
-    fn(wave : *(Wave), initFrame : i32, finalFrame : i32) -> unit,
-  WaveFormat :
-    fn(wave : *(Wave), sampleRate : i32, sampleSize : i32, channels : i32) -> unit,
-  LoadWaveSamples :
-    fn(wave : Wave) -> *(f32),
-  UnloadWaveSamples :
-    fn(samples : *(f32)) -> unit,
-  LoadMusicStream :
-    fn(fileName : *(char)) -> Music,
-  LoadMusicStreamFromMemory :
-    fn(fileType : *(char), data : *(u8), dataSize : i32) -> Music,
-  IsMusicValid :
-    fn(music : Music) -> bool,
-  UnloadMusicStream :
-    fn(music : Music) -> unit,
-  PlayMusicStream :
-    fn(music : Music) -> unit,
-  IsMusicStreamPlaying :
-    fn(music : Music) -> bool,
-  UpdateMusicStream :
-    fn(music : Music) -> unit,
-  StopMusicStream :
-    fn(music : Music) -> unit,
-  PauseMusicStream :
-    fn(music : Music) -> unit,
-  ResumeMusicStream :
-    fn(music : Music) -> unit,
-  SeekMusicStream :
-    fn(music : Music, position : f32) -> unit,
-  SetMusicVolume :
-    fn(music : Music, volume : f32) -> unit,
-  SetMusicPitch :
-    fn(music : Music, pitch : f32) -> unit,
-  SetMusicPan :
-    fn(music : Music, pan : f32) -> unit,
-  GetMusicTimeLength :
-    fn(music : Music) -> f32,
-  GetMusicTimePlayed :
-    fn(music : Music) -> f32,
-  LoadAudioStream :
-    fn(sampleRate : u32, sampleSize : u32, channels : u32) -> AudioStream,
-  IsAudioStreamValid :
-    fn(stream : AudioStream) -> bool,
-  UnloadAudioStream :
-    fn(stream : AudioStream) -> unit,
-  UpdateAudioStream :
-    fn(stream : AudioStream, data : *(void), frameCount : i32) -> unit,
-  IsAudioStreamProcessed :
-    fn(stream : AudioStream) -> bool,
-  PlayAudioStream :
-    fn(stream : AudioStream) -> unit,
-  PauseAudioStream :
-    fn(stream : AudioStream) -> unit,
-  ResumeAudioStream :
-    fn(stream : AudioStream) -> unit,
-  IsAudioStreamPlaying :
-    fn(stream : AudioStream) -> bool,
-  StopAudioStream :
-    fn(stream : AudioStream) -> unit,
-  SetAudioStreamVolume :
-    fn(stream : AudioStream, volume : f32) -> unit,
-  SetAudioStreamPitch :
-    fn(stream : AudioStream, pitch : f32) -> unit,
-  SetAudioStreamPan :
-    fn(stream : AudioStream, pan : f32) -> unit,
-  SetAudioStreamBufferSizeDefault :
-    fn(size : i32) -> unit
-;
+// Raylib struct mirrors are plain Yo structs; the c_include `Name : Type`
+// bindings adopt them and bind them to the C struct names from raylib.h, so
+// by-value parameters match the header's prototypes (0.2.30 extern structs).
+
+pragma(Pragma.AllowUnsafe);
+
+Color :: struct(r : u8, g : u8, b : u8, a : u8);
+Vector2 :: struct(x : f32, y : f32);
+Vector3 :: struct(x : f32, y : f32, z : f32);
+Vector4 :: struct(x : f32, y : f32, z : f32, w : f32);
+Matrix :: struct(m0 : f32, m4 : f32, m8 : f32, m12 : f32, m1 : f32, m5 : f32, m9 : f32, m13 : f32, m2 : f32, m6 : f32, m10 : f32, m14 : f32, m3 : f32, m7 : f32, m11 : f32, m15 : f32);
+Rectangle :: struct(x : f32, y : f32, width : f32, height : f32);
+Image :: struct(data : *(void), width : i32, height : i32, mipmaps : i32, format : i32);
+Texture :: struct(id : u32, width : i32, height : i32, mipmaps : i32, format : i32);
+RenderTexture :: struct(id : u32, texture : Texture, depth : Texture);
+NPatchInfo :: struct(source : Rectangle, left : i32, top : i32, right : i32, bottom : i32, layout : i32);
+GlyphInfo :: struct(value : i32, offsetX : i32, offsetY : i32, advanceX : i32, image : Image);
+Font :: struct(baseSize : i32, glyphCount : i32, glyphPadding : i32, texture : Texture, recs : *(Rectangle), glyphs : *(GlyphInfo));
+Camera3D :: struct(position : Vector3, target : Vector3, up : Vector3, fovy : f32, projection : i32);
+Camera2D :: struct(offset : Vector2, target : Vector2, rotation : f32, zoom : f32);
+Shader :: struct(id : u32, locs : *(i32));
+MaterialMap :: struct(texture : Texture, color : Color, value : f32);
+Material :: struct(shader : Shader, maps : *(MaterialMap), params : Array(f32, 4));
+Transform :: struct(translation : Vector3, rotation : Vector4, scale : Vector3);
+BoneInfo :: struct(name : Array(char, 32), parent : i32);
+ModelSkeleton :: struct(boneCount : i32, bones : *(BoneInfo), bindPose : *(Transform));
+Mesh :: struct(vertexCount : i32, triangleCount : i32, vertices : *(f32), texcoords : *(f32), texcoords2 : *(f32), normals : *(f32), tangents : *(f32), colors : *(u8), indices : *(u16), boneCount : i32, boneIndices : *(u8), boneWeights : *(f32), animVertices : *(f32), animNormals : *(f32), vaoId : u32, vboId : *(u32));
+Model :: struct(transform : Matrix, meshCount : i32, materialCount : i32, meshes : *(Mesh), materials : *(Material), meshMaterial : *(i32), skeleton : ModelSkeleton, currentPose : *(Transform), boneMatrices : *(Matrix));
+ModelAnimation :: struct(name : Array(char, 32), boneCount : i32, keyframeCount : i32, keyframePoses : *(*(Transform)));
+Ray :: struct(position : Vector3, direction : Vector3);
+RayCollision :: struct(hit : bool, distance : f32, point : Vector3, normal : Vector3);
+BoundingBox :: struct(min : Vector3, max : Vector3);
+Wave :: struct(frameCount : u32, sampleRate : u32, sampleSize : u32, channels : u32, data : *(void));
+AudioStream :: struct(buffer : *(void), processor : *(void), sampleRate : u32, sampleSize : u32, channels : u32);
+Sound :: struct(stream : AudioStream, frameCount : u32);
+Music :: struct(stream : AudioStream, frameCount : u32, looping : bool, ctxType : i32, ctxData : *(void));
+VrDeviceInfo :: struct(hResolution : i32, vResolution : i32, hScreenSize : f32, vScreenSize : f32, eyeToScreenDistance : f32, lensSeparationDistance : f32, interpupillaryDistance : f32, lensDistortionValues : Array(f32, 4), chromaAbCorrection : Array(f32, 4));
+VrStereoConfig :: struct(projection : Array(Matrix, 2), viewOffset : Array(Matrix, 2), leftLensCenter : Array(f32, 2), rightLensCenter : Array(f32, 2), leftScreenCenter : Array(f32, 2), rightScreenCenter : Array(f32, 2), scale : Array(f32, 2), scaleIn : Array(f32, 2));
+FilePathList :: struct(capacity : u32, count : u32, paths : *(*(char)));
+AutomationEvent :: struct(frame : u32, type : u32, params : Array(i32, 4));
+AutomationEventList :: struct(capacity : u32, count : u32, events : *(AutomationEvent));
+
+c_include(
+  "<raylib.h>",
+  Color : Type,
+  Vector2 : Type,
+  Vector3 : Type,
+  Vector4 : Type,
+  Matrix : Type,
+  Rectangle : Type,
+  Image : Type,
+  Texture : Type,
+  RenderTexture : Type,
+  NPatchInfo : Type,
+  GlyphInfo : Type,
+  Font : Type,
+  Camera3D : Type,
+  Camera2D : Type,
+  Shader : Type,
+  MaterialMap : Type,
+  Material : Type,
+  Transform : Type,
+  BoneInfo : Type,
+  ModelSkeleton : Type,
+  Mesh : Type,
+  Model : Type,
+  ModelAnimation : Type,
+  Ray : Type,
+  RayCollision : Type,
+  BoundingBox : Type,
+  Wave : Type,
+  AudioStream : Type,
+  Sound : Type,
+  Music : Type,
+  VrDeviceInfo : Type,
+  VrStereoConfig : Type,
+  FilePathList : Type,
+  AutomationEvent : Type,
+  AutomationEventList : Type,
+  InitWindow : (fn(width : i32, height : i32, title : *(char)) -> unit),
+  CloseWindow : (fn() -> unit),
+  WindowShouldClose : (fn() -> bool),
+  IsWindowReady : (fn() -> bool),
+  IsWindowFullscreen : (fn() -> bool),
+  IsWindowHidden : (fn() -> bool),
+  IsWindowMinimized : (fn() -> bool),
+  IsWindowMaximized : (fn() -> bool),
+  IsWindowFocused : (fn() -> bool),
+  IsWindowResized : (fn() -> bool),
+  IsWindowState : (fn(flag : u32) -> bool),
+  SetWindowState : (fn(flags : u32) -> unit),
+  ClearWindowState : (fn(flags : u32) -> unit),
+  ToggleFullscreen : (fn() -> unit),
+  ToggleBorderlessWindowed : (fn() -> unit),
+  MaximizeWindow : (fn() -> unit),
+  MinimizeWindow : (fn() -> unit),
+  RestoreWindow : (fn() -> unit),
+  SetWindowIcon : (fn(image : Image) -> unit),
+  SetWindowIcons : (fn(images : *(Image), count : i32) -> unit),
+  SetWindowTitle : (fn(title : *(char)) -> unit),
+  SetWindowPosition : (fn(x : i32, y : i32) -> unit),
+  SetWindowMonitor : (fn(monitor : i32) -> unit),
+  SetWindowMinSize : (fn(width : i32, height : i32) -> unit),
+  SetWindowMaxSize : (fn(width : i32, height : i32) -> unit),
+  SetWindowSize : (fn(width : i32, height : i32) -> unit),
+  SetWindowOpacity : (fn(opacity : f32) -> unit),
+  SetWindowFocused : (fn() -> unit),
+  GetWindowHandle : (fn() -> *(void)),
+  GetScreenWidth : (fn() -> i32),
+  GetScreenHeight : (fn() -> i32),
+  GetRenderWidth : (fn() -> i32),
+  GetRenderHeight : (fn() -> i32),
+  GetMonitorCount : (fn() -> i32),
+  GetCurrentMonitor : (fn() -> i32),
+  GetMonitorPosition : (fn(monitor : i32) -> Vector2),
+  GetMonitorWidth : (fn(monitor : i32) -> i32),
+  GetMonitorHeight : (fn(monitor : i32) -> i32),
+  GetMonitorPhysicalWidth : (fn(monitor : i32) -> i32),
+  GetMonitorPhysicalHeight : (fn(monitor : i32) -> i32),
+  GetMonitorRefreshRate : (fn(monitor : i32) -> i32),
+  GetWindowPosition : (fn() -> Vector2),
+  GetWindowScaleDPI : (fn() -> Vector2),
+  GetMonitorName : (fn(monitor : i32) -> *(char)),
+  SetClipboardText : (fn(text : *(char)) -> unit),
+  GetClipboardText : (fn() -> *(char)),
+  GetClipboardImage : (fn() -> Image),
+  EnableEventWaiting : (fn() -> unit),
+  DisableEventWaiting : (fn() -> unit),
+  ShowCursor : (fn() -> unit),
+  HideCursor : (fn() -> unit),
+  IsCursorHidden : (fn() -> bool),
+  EnableCursor : (fn() -> unit),
+  DisableCursor : (fn() -> unit),
+  IsCursorOnScreen : (fn() -> bool),
+  ClearBackground : (fn(color : Color) -> unit),
+  BeginDrawing : (fn() -> unit),
+  EndDrawing : (fn() -> unit),
+  BeginMode2D : (fn(camera : Camera2D) -> unit),
+  EndMode2D : (fn() -> unit),
+  BeginMode3D : (fn(camera : Camera3D) -> unit),
+  EndMode3D : (fn() -> unit),
+  BeginTextureMode : (fn(target : RenderTexture) -> unit),
+  EndTextureMode : (fn() -> unit),
+  BeginShaderMode : (fn(shader : Shader) -> unit),
+  EndShaderMode : (fn() -> unit),
+  BeginBlendMode : (fn(mode : i32) -> unit),
+  EndBlendMode : (fn() -> unit),
+  BeginScissorMode : (fn(x : i32, y : i32, width : i32, height : i32) -> unit),
+  EndScissorMode : (fn() -> unit),
+  BeginVrStereoMode : (fn(config : VrStereoConfig) -> unit),
+  EndVrStereoMode : (fn() -> unit),
+  LoadVrStereoConfig : (fn(device : VrDeviceInfo) -> VrStereoConfig),
+  UnloadVrStereoConfig : (fn(config : VrStereoConfig) -> unit),
+  LoadShader : (fn(vsFileName : *(char), fsFileName : *(char)) -> Shader),
+  LoadShaderFromMemory : (fn(vsCode : *(char), fsCode : *(char)) -> Shader),
+  IsShaderValid : (fn(shader : Shader) -> bool),
+  GetShaderLocation : (fn(shader : Shader, uniformName : *(char)) -> i32),
+  GetShaderLocationAttrib : (fn(shader : Shader, attribName : *(char)) -> i32),
+  SetShaderValue : (fn(shader : Shader, locIndex : i32, value : *(void), uniformType : i32) -> unit),
+  SetShaderValueV : (fn(shader : Shader, locIndex : i32, value : *(void), uniformType : i32, count : i32) -> unit),
+  SetShaderValueMatrix : (fn(shader : Shader, locIndex : i32, mat : Matrix) -> unit),
+  SetShaderValueTexture : (fn(shader : Shader, locIndex : i32, texture : Texture) -> unit),
+  UnloadShader : (fn(shader : Shader) -> unit),
+  GetScreenToWorldRay : (fn(position : Vector2, camera : Camera3D) -> Ray),
+  GetScreenToWorldRayEx : (fn(position : Vector2, camera : Camera3D, width : i32, height : i32) -> Ray),
+  GetWorldToScreen : (fn(position : Vector3, camera : Camera3D) -> Vector2),
+  GetWorldToScreenEx : (fn(position : Vector3, camera : Camera3D, width : i32, height : i32) -> Vector2),
+  GetWorldToScreen2D : (fn(position : Vector2, camera : Camera2D) -> Vector2),
+  GetScreenToWorld2D : (fn(position : Vector2, camera : Camera2D) -> Vector2),
+  GetCameraMatrix : (fn(camera : Camera3D) -> Matrix),
+  GetCameraMatrix2D : (fn(camera : Camera2D) -> Matrix),
+  SetTargetFPS : (fn(fps : i32) -> unit),
+  GetFrameTime : (fn() -> f32),
+  GetTime : (fn() -> f64),
+  GetFPS : (fn() -> i32),
+  SwapScreenBuffer : (fn() -> unit),
+  PollInputEvents : (fn() -> unit),
+  WaitTime : (fn(seconds : f64) -> unit),
+  SetRandomSeed : (fn(seed : u32) -> unit),
+  GetRandomValue : (fn(min : i32, max : i32) -> i32),
+  LoadRandomSequence : (fn(count : u32, min : i32, max : i32) -> *(i32)),
+  UnloadRandomSequence : (fn(sequence : *(i32)) -> unit),
+  TakeScreenshot : (fn(fileName : *(char)) -> unit),
+  SetConfigFlags : (fn(flags : u32) -> unit),
+  OpenURL : (fn(url : *(char)) -> unit),
+  SetTraceLogLevel : (fn(logLevel : i32) -> unit),
+  TraceLog : (fn(logLevel : i32, text : *(char), ...) -> unit),
+  MemAlloc : (fn(size : u32) -> *(void)),
+  MemRealloc : (fn(ptr : *(void), size : u32) -> *(void)),
+  MemFree : (fn(ptr : *(void)) -> unit),
+  LoadFileData : (fn(fileName : *(char), dataSize : *(i32)) -> *(u8)),
+  UnloadFileData : (fn(data : *(u8)) -> unit),
+  SaveFileData : (fn(fileName : *(char), data : *(void), dataSize : i32) -> bool),
+  LoadFileText : (fn(fileName : *(char)) -> *(char)),
+  UnloadFileText : (fn(text : *(char)) -> unit),
+  SaveFileText : (fn(fileName : *(char), text : *(char)) -> bool),
+  FileExists : (fn(fileName : *(char)) -> bool),
+  DirectoryExists : (fn(dirPath : *(char)) -> bool),
+  IsFileExtension : (fn(fileName : *(char), ext : *(char)) -> bool),
+  GetFileLength : (fn(fileName : *(char)) -> i32),
+  GetFileExtension : (fn(fileName : *(char)) -> *(char)),
+  GetFileName : (fn(filePath : *(char)) -> *(char)),
+  GetFileNameWithoutExt : (fn(filePath : *(char)) -> *(char)),
+  GetDirectoryPath : (fn(filePath : *(char)) -> *(char)),
+  GetPrevDirectoryPath : (fn(dirPath : *(char)) -> *(char)),
+  GetWorkingDirectory : (fn() -> *(char)),
+  GetApplicationDirectory : (fn() -> *(char)),
+  MakeDirectory : (fn(dirPath : *(char)) -> i32),
+  ChangeDirectory : (fn(dir : *(char)) -> bool),
+  IsPathFile : (fn(path : *(char)) -> bool),
+  IsFileNameValid : (fn(fileName : *(char)) -> bool),
+  LoadDirectoryFiles : (fn(dirPath : *(char)) -> FilePathList),
+  LoadDirectoryFilesEx : (fn(basePath : *(char), filter : *(char), scanSubdirs : bool) -> FilePathList),
+  UnloadDirectoryFiles : (fn(files : FilePathList) -> unit),
+  IsFileDropped : (fn() -> bool),
+  LoadDroppedFiles : (fn() -> FilePathList),
+  UnloadDroppedFiles : (fn(files : FilePathList) -> unit),
+  IsKeyPressed : (fn(key : i32) -> bool),
+  IsKeyPressedRepeat : (fn(key : i32) -> bool),
+  IsKeyDown : (fn(key : i32) -> bool),
+  IsKeyReleased : (fn(key : i32) -> bool),
+  IsKeyUp : (fn(key : i32) -> bool),
+  GetKeyPressed : (fn() -> i32),
+  GetCharPressed : (fn() -> i32),
+  SetExitKey : (fn(key : i32) -> unit),
+  IsGamepadAvailable : (fn(gamepad : i32) -> bool),
+  GetGamepadName : (fn(gamepad : i32) -> *(char)),
+  IsGamepadButtonPressed : (fn(gamepad : i32, button : i32) -> bool),
+  IsGamepadButtonDown : (fn(gamepad : i32, button : i32) -> bool),
+  IsGamepadButtonReleased : (fn(gamepad : i32, button : i32) -> bool),
+  IsGamepadButtonUp : (fn(gamepad : i32, button : i32) -> bool),
+  GetGamepadButtonPressed : (fn() -> i32),
+  GetGamepadAxisCount : (fn(gamepad : i32) -> i32),
+  GetGamepadAxisMovement : (fn(gamepad : i32, axis : i32) -> f32),
+  SetGamepadMappings : (fn(mappings : *(char)) -> i32),
+  SetGamepadVibration : (fn(gamepad : i32, leftMotor : f32, rightMotor : f32, duration : f32) -> unit),
+  IsMouseButtonPressed : (fn(button : i32) -> bool),
+  IsMouseButtonDown : (fn(button : i32) -> bool),
+  IsMouseButtonReleased : (fn(button : i32) -> bool),
+  IsMouseButtonUp : (fn(button : i32) -> bool),
+  GetMouseX : (fn() -> i32),
+  GetMouseY : (fn() -> i32),
+  GetMousePosition : (fn() -> Vector2),
+  GetMouseDelta : (fn() -> Vector2),
+  SetMousePosition : (fn(x : i32, y : i32) -> unit),
+  SetMouseOffset : (fn(offsetX : i32, offsetY : i32) -> unit),
+  SetMouseScale : (fn(scaleX : f32, scaleY : f32) -> unit),
+  GetMouseWheelMove : (fn() -> f32),
+  GetMouseWheelMoveV : (fn() -> Vector2),
+  SetMouseCursor : (fn(cursor : i32) -> unit),
+  GetTouchX : (fn() -> i32),
+  GetTouchY : (fn() -> i32),
+  GetTouchPosition : (fn(index : i32) -> Vector2),
+  GetTouchPointId : (fn(index : i32) -> i32),
+  GetTouchPointCount : (fn() -> i32),
+  SetGesturesEnabled : (fn(flags : u32) -> unit),
+  IsGestureDetected : (fn(gesture : u32) -> bool),
+  GetGestureDetected : (fn() -> i32),
+  GetGestureHoldDuration : (fn() -> f32),
+  GetGestureDragVector : (fn() -> Vector2),
+  GetGestureDragAngle : (fn() -> f32),
+  GetGesturePinchVector : (fn() -> Vector2),
+  GetGesturePinchAngle : (fn() -> f32),
+  UpdateCamera : (fn(camera : *(Camera3D), mode : i32) -> unit),
+  UpdateCameraPro : (fn(camera : *(Camera3D), movement : Vector3, rotation : Vector3, zoom : f32) -> unit),
+  SetShapesTexture : (fn(texture : Texture, source : Rectangle) -> unit),
+  GetShapesTexture : (fn() -> Texture),
+  GetShapesTextureRectangle : (fn() -> Rectangle),
+  DrawPixel : (fn(posX : i32, posY : i32, color : Color) -> unit),
+  DrawPixelV : (fn(position : Vector2, color : Color) -> unit),
+  DrawLine : (fn(startPosX : i32, startPosY : i32, endPosX : i32, endPosY : i32, color : Color) -> unit),
+  DrawLineV : (fn(startPos : Vector2, endPos : Vector2, color : Color) -> unit),
+  DrawLineEx : (fn(startPos : Vector2, endPos : Vector2, thick : f32, color : Color) -> unit),
+  DrawLineStrip : (fn(points : *(Vector2), pointCount : i32, color : Color) -> unit),
+  DrawLineBezier : (fn(startPos : Vector2, endPos : Vector2, thick : f32, color : Color) -> unit),
+  DrawCircle : (fn(centerX : i32, centerY : i32, radius : f32, color : Color) -> unit),
+  DrawCircleSector : (fn(center : Vector2, radius : f32, startAngle : f32, endAngle : f32, segments : i32, color : Color) -> unit),
+  DrawCircleSectorLines : (fn(center : Vector2, radius : f32, startAngle : f32, endAngle : f32, segments : i32, color : Color) -> unit),
+  DrawCircleGradient : (fn(centerX : i32, centerY : i32, radius : f32, inner : Color, outer : Color) -> unit),
+  DrawCircleV : (fn(center : Vector2, radius : f32, color : Color) -> unit),
+  DrawCircleLines : (fn(centerX : i32, centerY : i32, radius : f32, color : Color) -> unit),
+  DrawCircleLinesV : (fn(center : Vector2, radius : f32, color : Color) -> unit),
+  DrawEllipse : (fn(centerX : i32, centerY : i32, radiusH : f32, radiusV : f32, color : Color) -> unit),
+  DrawEllipseLines : (fn(centerX : i32, centerY : i32, radiusH : f32, radiusV : f32, color : Color) -> unit),
+  DrawRing : (fn(center : Vector2, innerRadius : f32, outerRadius : f32, startAngle : f32, endAngle : f32, segments : i32, color : Color) -> unit),
+  DrawRingLines : (fn(center : Vector2, innerRadius : f32, outerRadius : f32, startAngle : f32, endAngle : f32, segments : i32, color : Color) -> unit),
+  DrawRectangle : (fn(posX : i32, posY : i32, width : i32, height : i32, color : Color) -> unit),
+  DrawRectangleV : (fn(position : Vector2, size : Vector2, color : Color) -> unit),
+  DrawRectangleRec : (fn(rec : Rectangle, color : Color) -> unit),
+  DrawRectanglePro : (fn(rec : Rectangle, origin : Vector2, rotation : f32, color : Color) -> unit),
+  DrawRectangleGradientV : (fn(posX : i32, posY : i32, width : i32, height : i32, top : Color, bottom : Color) -> unit),
+  DrawRectangleGradientH : (fn(posX : i32, posY : i32, width : i32, height : i32, left : Color, right : Color) -> unit),
+  DrawRectangleGradientEx : (fn(rec : Rectangle, topLeft : Color, bottomLeft : Color, topRight : Color, bottomRight : Color) -> unit),
+  DrawRectangleLines : (fn(posX : i32, posY : i32, width : i32, height : i32, color : Color) -> unit),
+  DrawRectangleLinesEx : (fn(rec : Rectangle, lineThick : f32, color : Color) -> unit),
+  DrawRectangleRounded : (fn(rec : Rectangle, roundness : f32, segments : i32, color : Color) -> unit),
+  DrawRectangleRoundedLines : (fn(rec : Rectangle, roundness : f32, segments : i32, color : Color) -> unit),
+  DrawRectangleRoundedLinesEx : (fn(rec : Rectangle, roundness : f32, segments : i32, lineThick : f32, color : Color) -> unit),
+  DrawTriangle : (fn(v1 : Vector2, v2 : Vector2, v3 : Vector2, color : Color) -> unit),
+  DrawTriangleLines : (fn(v1 : Vector2, v2 : Vector2, v3 : Vector2, color : Color) -> unit),
+  DrawTriangleFan : (fn(points : *(Vector2), pointCount : i32, color : Color) -> unit),
+  DrawTriangleStrip : (fn(points : *(Vector2), pointCount : i32, color : Color) -> unit),
+  DrawPoly : (fn(center : Vector2, sides : i32, radius : f32, rotation : f32, color : Color) -> unit),
+  DrawPolyLines : (fn(center : Vector2, sides : i32, radius : f32, rotation : f32, color : Color) -> unit),
+  DrawPolyLinesEx : (fn(center : Vector2, sides : i32, radius : f32, rotation : f32, lineThick : f32, color : Color) -> unit),
+  DrawSplineLinear : (fn(points : *(Vector2), pointCount : i32, thick : f32, color : Color) -> unit),
+  DrawSplineBasis : (fn(points : *(Vector2), pointCount : i32, thick : f32, color : Color) -> unit),
+  DrawSplineCatmullRom : (fn(points : *(Vector2), pointCount : i32, thick : f32, color : Color) -> unit),
+  DrawSplineBezierQuadratic : (fn(points : *(Vector2), pointCount : i32, thick : f32, color : Color) -> unit),
+  DrawSplineBezierCubic : (fn(points : *(Vector2), pointCount : i32, thick : f32, color : Color) -> unit),
+  DrawSplineSegmentLinear : (fn(p1 : Vector2, p2 : Vector2, thick : f32, color : Color) -> unit),
+  DrawSplineSegmentBasis : (fn(p1 : Vector2, p2 : Vector2, p3 : Vector2, p4 : Vector2, thick : f32, color : Color) -> unit),
+  DrawSplineSegmentCatmullRom : (fn(p1 : Vector2, p2 : Vector2, p3 : Vector2, p4 : Vector2, thick : f32, color : Color) -> unit),
+  DrawSplineSegmentBezierQuadratic : (fn(p1 : Vector2, c2 : Vector2, p3 : Vector2, thick : f32, color : Color) -> unit),
+  DrawSplineSegmentBezierCubic : (fn(p1 : Vector2, c2 : Vector2, c3 : Vector2, p4 : Vector2, thick : f32, color : Color) -> unit),
+  GetSplinePointLinear : (fn(startPos : Vector2, endPos : Vector2, t : f32) -> Vector2),
+  GetSplinePointBasis : (fn(p1 : Vector2, p2 : Vector2, p3 : Vector2, p4 : Vector2, t : f32) -> Vector2),
+  GetSplinePointCatmullRom : (fn(p1 : Vector2, p2 : Vector2, p3 : Vector2, p4 : Vector2, t : f32) -> Vector2),
+  GetSplinePointBezierQuad : (fn(p1 : Vector2, c2 : Vector2, p3 : Vector2, t : f32) -> Vector2),
+  GetSplinePointBezierCubic : (fn(p1 : Vector2, c2 : Vector2, c3 : Vector2, p4 : Vector2, t : f32) -> Vector2),
+  CheckCollisionRecs : (fn(rec1 : Rectangle, rec2 : Rectangle) -> bool),
+  CheckCollisionCircles : (fn(center1 : Vector2, radius1 : f32, center2 : Vector2, radius2 : f32) -> bool),
+  CheckCollisionCircleRec : (fn(center : Vector2, radius : f32, rec : Rectangle) -> bool),
+  CheckCollisionCircleLine : (fn(center : Vector2, radius : f32, p1 : Vector2, p2 : Vector2) -> bool),
+  CheckCollisionPointRec : (fn(point : Vector2, rec : Rectangle) -> bool),
+  CheckCollisionPointCircle : (fn(point : Vector2, center : Vector2, radius : f32) -> bool),
+  CheckCollisionPointTriangle : (fn(point : Vector2, p1 : Vector2, p2 : Vector2, p3 : Vector2) -> bool),
+  CheckCollisionPointLine : (fn(point : Vector2, p1 : Vector2, p2 : Vector2, threshold : i32) -> bool),
+  CheckCollisionPointPoly : (fn(point : Vector2, points : *(Vector2), pointCount : i32) -> bool),
+  CheckCollisionLines : (fn(startPos1 : Vector2, endPos1 : Vector2, startPos2 : Vector2, endPos2 : Vector2, collisionPoint : *(Vector2)) -> bool),
+  GetCollisionRec : (fn(rec1 : Rectangle, rec2 : Rectangle) -> Rectangle),
+  LoadImage : (fn(fileName : *(char)) -> Image),
+  LoadImageRaw : (fn(fileName : *(char), width : i32, height : i32, format : i32, headerSize : i32) -> Image),
+  LoadImageAnim : (fn(fileName : *(char), frames : *(i32)) -> Image),
+  LoadImageAnimFromMemory : (fn(fileType : *(char), fileData : *(u8), dataSize : i32, frames : *(i32)) -> Image),
+  LoadImageFromMemory : (fn(fileType : *(char), fileData : *(u8), dataSize : i32) -> Image),
+  LoadImageFromTexture : (fn(texture : Texture) -> Image),
+  LoadImageFromScreen : (fn() -> Image),
+  IsImageValid : (fn(image : Image) -> bool),
+  UnloadImage : (fn(image : Image) -> unit),
+  ExportImage : (fn(image : Image, fileName : *(char)) -> bool),
+  ExportImageToMemory : (fn(image : Image, fileType : *(char), dataSize : *(i32)) -> *(u8)),
+  ExportImageAsCode : (fn(image : Image, fileName : *(char)) -> bool),
+  GenImageColor : (fn(width : i32, height : i32, color : Color) -> Image),
+  GenImageGradientLinear : (fn(width : i32, height : i32, direction : i32, start : Color, end : Color) -> Image),
+  GenImageGradientRadial : (fn(width : i32, height : i32, density : f32, inner : Color, outer : Color) -> Image),
+  GenImageGradientSquare : (fn(width : i32, height : i32, density : f32, inner : Color, outer : Color) -> Image),
+  GenImageChecked : (fn(width : i32, height : i32, checksX : i32, checksY : i32, col1 : Color, col2 : Color) -> Image),
+  GenImageWhiteNoise : (fn(width : i32, height : i32, factor : f32) -> Image),
+  GenImagePerlinNoise : (fn(width : i32, height : i32, offsetX : i32, offsetY : i32, scale : f32) -> Image),
+  GenImageCellular : (fn(width : i32, height : i32, tileSize : i32) -> Image),
+  GenImageText : (fn(width : i32, height : i32, text : *(char)) -> Image),
+  ImageCopy : (fn(image : Image) -> Image),
+  ImageFromImage : (fn(image : Image, rec : Rectangle) -> Image),
+  ImageFromChannel : (fn(image : Image, selectedChannel : i32) -> Image),
+  ImageText : (fn(text : *(char), fontSize : i32, color : Color) -> Image),
+  ImageTextEx : (fn(font : Font, text : *(char), fontSize : f32, spacing : f32, tint : Color) -> Image),
+  ImageFormat : (fn(image : *(Image), newFormat : i32) -> unit),
+  ImageToPOT : (fn(image : *(Image), fill : Color) -> unit),
+  ImageCrop : (fn(image : *(Image), crop : Rectangle) -> unit),
+  ImageAlphaCrop : (fn(image : *(Image), threshold : f32) -> unit),
+  ImageAlphaClear : (fn(image : *(Image), color : Color, threshold : f32) -> unit),
+  ImageAlphaMask : (fn(image : *(Image), alphaMask : Image) -> unit),
+  ImageAlphaPremultiply : (fn(image : *(Image)) -> unit),
+  ImageBlurGaussian : (fn(image : *(Image), blurSize : i32) -> unit),
+  ImageResize : (fn(image : *(Image), newWidth : i32, newHeight : i32) -> unit),
+  ImageResizeNN : (fn(image : *(Image), newWidth : i32, newHeight : i32) -> unit),
+  ImageResizeCanvas : (fn(image : *(Image), newWidth : i32, newHeight : i32, offsetX : i32, offsetY : i32, fill : Color) -> unit),
+  ImageMipmaps : (fn(image : *(Image)) -> unit),
+  ImageDither : (fn(image : *(Image), rBpp : i32, gBpp : i32, bBpp : i32, aBpp : i32) -> unit),
+  ImageFlipVertical : (fn(image : *(Image)) -> unit),
+  ImageFlipHorizontal : (fn(image : *(Image)) -> unit),
+  ImageRotate : (fn(image : *(Image), degrees : i32) -> unit),
+  ImageRotateCW : (fn(image : *(Image)) -> unit),
+  ImageRotateCCW : (fn(image : *(Image)) -> unit),
+  ImageColorTint : (fn(image : *(Image), color : Color) -> unit),
+  ImageColorInvert : (fn(image : *(Image)) -> unit),
+  ImageColorGrayscale : (fn(image : *(Image)) -> unit),
+  ImageColorContrast : (fn(image : *(Image), contrast : f32) -> unit),
+  ImageColorBrightness : (fn(image : *(Image), brightness : i32) -> unit),
+  ImageColorReplace : (fn(image : *(Image), color : Color, replace : Color) -> unit),
+  LoadImageColors : (fn(image : Image) -> *(Color)),
+  LoadImagePalette : (fn(image : Image, maxPaletteSize : i32, colorCount : *(i32)) -> *(Color)),
+  UnloadImageColors : (fn(colors : *(Color)) -> unit),
+  UnloadImagePalette : (fn(colors : *(Color)) -> unit),
+  GetImageAlphaBorder : (fn(image : Image, threshold : f32) -> Rectangle),
+  GetImageColor : (fn(image : Image, x : i32, y : i32) -> Color),
+  ImageClearBackground : (fn(dst : *(Image), color : Color) -> unit),
+  ImageDrawPixel : (fn(dst : *(Image), posX : i32, posY : i32, color : Color) -> unit),
+  ImageDrawPixelV : (fn(dst : *(Image), position : Vector2, color : Color) -> unit),
+  ImageDrawLine : (fn(dst : *(Image), startPosX : i32, startPosY : i32, endPosX : i32, endPosY : i32, color : Color) -> unit),
+  ImageDrawLineV : (fn(dst : *(Image), start : Vector2, end : Vector2, color : Color) -> unit),
+  ImageDrawLineEx : (fn(dst : *(Image), start : Vector2, end : Vector2, thick : i32, color : Color) -> unit),
+  ImageDrawCircle : (fn(dst : *(Image), centerX : i32, centerY : i32, radius : i32, color : Color) -> unit),
+  ImageDrawCircleV : (fn(dst : *(Image), center : Vector2, radius : i32, color : Color) -> unit),
+  ImageDrawCircleLines : (fn(dst : *(Image), centerX : i32, centerY : i32, radius : i32, color : Color) -> unit),
+  ImageDrawCircleLinesV : (fn(dst : *(Image), center : Vector2, radius : i32, color : Color) -> unit),
+  ImageDrawRectangle : (fn(dst : *(Image), posX : i32, posY : i32, width : i32, height : i32, color : Color) -> unit),
+  ImageDrawRectangleV : (fn(dst : *(Image), position : Vector2, size : Vector2, color : Color) -> unit),
+  ImageDrawRectangleRec : (fn(dst : *(Image), rec : Rectangle, color : Color) -> unit),
+  ImageDrawRectangleLines : (fn(dst : *(Image), rec : Rectangle, thick : i32, color : Color) -> unit),
+  ImageDrawTriangle : (fn(dst : *(Image), v1 : Vector2, v2 : Vector2, v3 : Vector2, color : Color) -> unit),
+  ImageDrawTriangleEx : (fn(dst : *(Image), v1 : Vector2, v2 : Vector2, v3 : Vector2, c1 : Color, c2 : Color, c3 : Color) -> unit),
+  ImageDrawTriangleLines : (fn(dst : *(Image), v1 : Vector2, v2 : Vector2, v3 : Vector2, color : Color) -> unit),
+  ImageDraw : (fn(dst : *(Image), src : Image, srcRec : Rectangle, dstRec : Rectangle, tint : Color) -> unit),
+  ImageDrawText : (fn(dst : *(Image), text : *(char), posX : i32, posY : i32, fontSize : i32, color : Color) -> unit),
+  ImageDrawTextEx : (fn(dst : *(Image), font : Font, text : *(char), position : Vector2, fontSize : f32, spacing : f32, tint : Color) -> unit),
+  LoadTexture : (fn(fileName : *(char)) -> Texture),
+  LoadTextureFromImage : (fn(image : Image) -> Texture),
+  LoadTextureCubemap : (fn(image : Image, layout : i32) -> Texture),
+  LoadRenderTexture : (fn(width : i32, height : i32) -> RenderTexture),
+  IsTextureValid : (fn(texture : Texture) -> bool),
+  UnloadTexture : (fn(texture : Texture) -> unit),
+  IsRenderTextureValid : (fn(target : RenderTexture) -> bool),
+  UnloadRenderTexture : (fn(target : RenderTexture) -> unit),
+  UpdateTexture : (fn(texture : Texture, pixels : *(void)) -> unit),
+  UpdateTextureRec : (fn(texture : Texture, rec : Rectangle, pixels : *(void)) -> unit),
+  GenTextureMipmaps : (fn(texture : *(Texture)) -> unit),
+  SetTextureFilter : (fn(texture : Texture, filter : i32) -> unit),
+  SetTextureWrap : (fn(texture : Texture, wrap : i32) -> unit),
+  DrawTexture : (fn(texture : Texture, posX : i32, posY : i32, tint : Color) -> unit),
+  DrawTextureV : (fn(texture : Texture, position : Vector2, tint : Color) -> unit),
+  DrawTextureEx : (fn(texture : Texture, position : Vector2, rotation : f32, scale : f32, tint : Color) -> unit),
+  DrawTextureRec : (fn(texture : Texture, source : Rectangle, position : Vector2, tint : Color) -> unit),
+  DrawTexturePro : (fn(texture : Texture, source : Rectangle, dest : Rectangle, origin : Vector2, rotation : f32, tint : Color) -> unit),
+  DrawTextureNPatch : (fn(texture : Texture, nPatchInfo : NPatchInfo, dest : Rectangle, origin : Vector2, rotation : f32, tint : Color) -> unit),
+  ColorIsEqual : (fn(col1 : Color, col2 : Color) -> bool),
+  Fade : (fn(color : Color, alpha : f32) -> Color),
+  ColorToInt : (fn(color : Color) -> i32),
+  ColorNormalize : (fn(color : Color) -> Vector4),
+  ColorFromNormalized : (fn(normalized : Vector4) -> Color),
+  ColorToHSV : (fn(color : Color) -> Vector3),
+  ColorFromHSV : (fn(hue : f32, saturation : f32, value : f32) -> Color),
+  ColorTint : (fn(color : Color, tint : Color) -> Color),
+  ColorBrightness : (fn(color : Color, factor : f32) -> Color),
+  ColorContrast : (fn(color : Color, contrast : f32) -> Color),
+  ColorAlpha : (fn(color : Color, alpha : f32) -> Color),
+  ColorAlphaBlend : (fn(dst : Color, src : Color, tint : Color) -> Color),
+  ColorLerp : (fn(color1 : Color, color2 : Color, factor : f32) -> Color),
+  GetColor : (fn(hexValue : u32) -> Color),
+  GetPixelColor : (fn(srcPtr : *(void), format : i32) -> Color),
+  SetPixelColor : (fn(dstPtr : *(void), color : Color, format : i32) -> unit),
+  GetPixelDataSize : (fn(width : i32, height : i32, format : i32) -> i32),
+  GetFontDefault : (fn() -> Font),
+  LoadFont : (fn(fileName : *(char)) -> Font),
+  LoadFontEx : (fn(fileName : *(char), fontSize : i32, codepoints : *(i32), codepointCount : i32) -> Font),
+  LoadFontFromImage : (fn(image : Image, key : Color, firstChar : i32) -> Font),
+  LoadFontFromMemory : (fn(fileType : *(char), fileData : *(u8), dataSize : i32, fontSize : i32, codepoints : *(i32), codepointCount : i32) -> Font),
+  IsFontValid : (fn(font : Font) -> bool),
+  UnloadFont : (fn(font : Font) -> unit),
+  ExportFontAsCode : (fn(font : Font, fileName : *(char)) -> bool),
+  DrawFPS : (fn(posX : i32, posY : i32) -> unit),
+  DrawText : (fn(text : *(char), posX : i32, posY : i32, fontSize : i32, color : Color) -> unit),
+  DrawTextEx : (fn(font : Font, text : *(char), position : Vector2, fontSize : f32, spacing : f32, tint : Color) -> unit),
+  DrawTextPro : (fn(font : Font, text : *(char), position : Vector2, origin : Vector2, rotation : f32, fontSize : f32, spacing : f32, tint : Color) -> unit),
+  DrawTextCodepoint : (fn(font : Font, codepoint : i32, position : Vector2, fontSize : f32, tint : Color) -> unit),
+  DrawTextCodepoints : (fn(font : Font, codepoints : *(i32), codepointCount : i32, position : Vector2, fontSize : f32, spacing : f32, tint : Color) -> unit),
+  SetTextLineSpacing : (fn(spacing : i32) -> unit),
+  MeasureText : (fn(text : *(char), fontSize : i32) -> i32),
+  MeasureTextEx : (fn(font : Font, text : *(char), fontSize : f32, spacing : f32) -> Vector2),
+  GetGlyphIndex : (fn(font : Font, codepoint : i32) -> i32),
+  GetGlyphInfo : (fn(font : Font, codepoint : i32) -> GlyphInfo),
+  GetGlyphAtlasRec : (fn(font : Font, codepoint : i32) -> Rectangle),
+  TextFormat : (fn(text : *(char), ...) -> *(char)),
+  TextSubtext : (fn(text : *(char), position : i32, length : i32) -> *(char)),
+  TextReplace : (fn(text : *(char), replace : *(char), by : *(char)) -> *(char)),
+  TextInsert : (fn(text : *(char), insert : *(char), position : i32) -> *(char)),
+  TextJoin : (fn(textList : *(*(char)), count : i32, delimiter : *(char)) -> *(char)),
+  TextSplit : (fn(text : *(char), delimiter : char, count : *(i32)) -> *(*(char))),
+  TextAppend : (fn(text : *(char), append : *(char), position : *(i32)) -> unit),
+  TextFindIndex : (fn(text : *(char), find : *(char)) -> i32),
+  TextToUpper : (fn(text : *(char)) -> *(char)),
+  TextToLower : (fn(text : *(char)) -> *(char)),
+  TextToPascal : (fn(text : *(char)) -> *(char)),
+  TextToSnake : (fn(text : *(char)) -> *(char)),
+  TextToCamel : (fn(text : *(char)) -> *(char)),
+  TextToInteger : (fn(text : *(char)) -> i32),
+  TextToFloat : (fn(text : *(char)) -> f32),
+  TextLength : (fn(text : *(char)) -> u32),
+  TextIsEqual : (fn(text1 : *(char), text2 : *(char)) -> bool),
+  TextCopy : (fn(dst : *(char), src : *(char)) -> i32),
+  DrawLine3D : (fn(startPos : Vector3, endPos : Vector3, color : Color) -> unit),
+  DrawPoint3D : (fn(position : Vector3, color : Color) -> unit),
+  DrawCircle3D : (fn(center : Vector3, radius : f32, rotationAxis : Vector3, rotationAngle : f32, color : Color) -> unit),
+  DrawTriangle3D : (fn(v1 : Vector3, v2 : Vector3, v3 : Vector3, color : Color) -> unit),
+  DrawTriangleStrip3D : (fn(points : *(Vector3), pointCount : i32, color : Color) -> unit),
+  DrawCube : (fn(position : Vector3, width : f32, height : f32, length : f32, color : Color) -> unit),
+  DrawCubeV : (fn(position : Vector3, size : Vector3, color : Color) -> unit),
+  DrawCubeWires : (fn(position : Vector3, width : f32, height : f32, length : f32, color : Color) -> unit),
+  DrawCubeWiresV : (fn(position : Vector3, size : Vector3, color : Color) -> unit),
+  DrawSphere : (fn(centerPos : Vector3, radius : f32, color : Color) -> unit),
+  DrawSphereEx : (fn(centerPos : Vector3, radius : f32, rings : i32, slices : i32, color : Color) -> unit),
+  DrawSphereWires : (fn(centerPos : Vector3, radius : f32, rings : i32, slices : i32, color : Color) -> unit),
+  DrawCylinder : (fn(position : Vector3, radiusTop : f32, radiusBottom : f32, height : f32, slices : i32, color : Color) -> unit),
+  DrawCylinderEx : (fn(startPos : Vector3, endPos : Vector3, startRadius : f32, endRadius : f32, sides : i32, color : Color) -> unit),
+  DrawCylinderWires : (fn(position : Vector3, radiusTop : f32, radiusBottom : f32, height : f32, slices : i32, color : Color) -> unit),
+  DrawCylinderWiresEx : (fn(startPos : Vector3, endPos : Vector3, startRadius : f32, endRadius : f32, sides : i32, color : Color) -> unit),
+  DrawCapsule : (fn(startPos : Vector3, endPos : Vector3, radius : f32, slices : i32, rings : i32, color : Color) -> unit),
+  DrawCapsuleWires : (fn(startPos : Vector3, endPos : Vector3, radius : f32, slices : i32, rings : i32, color : Color) -> unit),
+  DrawPlane : (fn(centerPos : Vector3, size : Vector2, color : Color) -> unit),
+  DrawRay : (fn(ray : Ray, color : Color) -> unit),
+  DrawGrid : (fn(slices : i32, spacing : f32) -> unit),
+  LoadModel : (fn(fileName : *(char)) -> Model),
+  LoadModelFromMesh : (fn(mesh : Mesh) -> Model),
+  IsModelValid : (fn(model : Model) -> bool),
+  UnloadModel : (fn(model : Model) -> unit),
+  GetModelBoundingBox : (fn(model : Model) -> BoundingBox),
+  DrawModel : (fn(model : Model, position : Vector3, scale : f32, tint : Color) -> unit),
+  DrawModelEx : (fn(model : Model, position : Vector3, rotationAxis : Vector3, rotationAngle : f32, scale : Vector3, tint : Color) -> unit),
+  DrawModelWires : (fn(model : Model, position : Vector3, scale : f32, tint : Color) -> unit),
+  DrawModelWiresEx : (fn(model : Model, position : Vector3, rotationAxis : Vector3, rotationAngle : f32, scale : Vector3, tint : Color) -> unit),
+  DrawBoundingBox : (fn(box : BoundingBox, color : Color) -> unit),
+  DrawBillboard : (fn(camera : Camera3D, texture : Texture, position : Vector3, scale : f32, tint : Color) -> unit),
+  DrawBillboardRec : (fn(camera : Camera3D, texture : Texture, source : Rectangle, position : Vector3, size : Vector2, tint : Color) -> unit),
+  DrawBillboardPro : (fn(camera : Camera3D, texture : Texture, source : Rectangle, position : Vector3, up : Vector3, size : Vector2, origin : Vector2, rotation : f32, tint : Color) -> unit),
+  UploadMesh : (fn(mesh : *(Mesh), dynamic : bool) -> unit),
+  UpdateMeshBuffer : (fn(mesh : Mesh, index : i32, data : *(void), dataSize : i32, offset : i32) -> unit),
+  UnloadMesh : (fn(mesh : Mesh) -> unit),
+  DrawMesh : (fn(mesh : Mesh, material : Material, transform : Matrix) -> unit),
+  DrawMeshInstanced : (fn(mesh : Mesh, material : Material, transforms : *(Matrix), instances : i32) -> unit),
+  GetMeshBoundingBox : (fn(mesh : Mesh) -> BoundingBox),
+  GenMeshTangents : (fn(mesh : *(Mesh)) -> unit),
+  ExportMesh : (fn(mesh : Mesh, fileName : *(char)) -> bool),
+  ExportMeshAsCode : (fn(mesh : Mesh, fileName : *(char)) -> bool),
+  GenMeshPoly : (fn(sides : i32, radius : f32) -> Mesh),
+  GenMeshPlane : (fn(width : f32, length : f32, resX : i32, resZ : i32) -> Mesh),
+  GenMeshCube : (fn(width : f32, height : f32, length : f32) -> Mesh),
+  GenMeshSphere : (fn(radius : f32, rings : i32, slices : i32) -> Mesh),
+  GenMeshHemiSphere : (fn(radius : f32, rings : i32, slices : i32) -> Mesh),
+  GenMeshCylinder : (fn(radius : f32, height : f32, slices : i32) -> Mesh),
+  GenMeshCone : (fn(radius : f32, height : f32, slices : i32) -> Mesh),
+  GenMeshTorus : (fn(radius : f32, size : f32, radSeg : i32, sides : i32) -> Mesh),
+  GenMeshKnot : (fn(radius : f32, size : f32, radSeg : i32, sides : i32) -> Mesh),
+  GenMeshHeightmap : (fn(heightmap : Image, size : Vector3) -> Mesh),
+  GenMeshCubicmap : (fn(cubicmap : Image, cubeSize : Vector3) -> Mesh),
+  LoadMaterials : (fn(fileName : *(char), materialCount : *(i32)) -> *(Material)),
+  LoadMaterialDefault : (fn() -> Material),
+  IsMaterialValid : (fn(material : Material) -> bool),
+  UnloadMaterial : (fn(material : Material) -> unit),
+  SetMaterialTexture : (fn(material : *(Material), mapType : i32, texture : Texture) -> unit),
+  SetModelMeshMaterial : (fn(model : *(Model), meshId : i32, materialId : i32) -> unit),
+  LoadModelAnimations : (fn(fileName : *(char), animCount : *(i32)) -> *(ModelAnimation)),
+  UpdateModelAnimation : (fn(model : Model, anim : ModelAnimation, frame : i32) -> unit),
+  UnloadModelAnimations : (fn(animations : *(ModelAnimation), animCount : i32) -> unit),
+  IsModelAnimationValid : (fn(model : Model, anim : ModelAnimation) -> bool),
+  CheckCollisionSpheres : (fn(center1 : Vector3, radius1 : f32, center2 : Vector3, radius2 : f32) -> bool),
+  CheckCollisionBoxes : (fn(box1 : BoundingBox, box2 : BoundingBox) -> bool),
+  CheckCollisionBoxSphere : (fn(box : BoundingBox, center : Vector3, radius : f32) -> bool),
+  GetRayCollisionSphere : (fn(ray : Ray, center : Vector3, radius : f32) -> RayCollision),
+  GetRayCollisionBox : (fn(ray : Ray, box : BoundingBox) -> RayCollision),
+  GetRayCollisionMesh : (fn(ray : Ray, mesh : Mesh, transform : Matrix) -> RayCollision),
+  GetRayCollisionTriangle : (fn(ray : Ray, p1 : Vector3, p2 : Vector3, p3 : Vector3) -> RayCollision),
+  GetRayCollisionQuad : (fn(ray : Ray, p1 : Vector3, p2 : Vector3, p3 : Vector3, p4 : Vector3) -> RayCollision),
+  InitAudioDevice : (fn() -> unit),
+  CloseAudioDevice : (fn() -> unit),
+  IsAudioDeviceReady : (fn() -> bool),
+  SetMasterVolume : (fn(volume : f32) -> unit),
+  GetMasterVolume : (fn() -> f32),
+  LoadWave : (fn(fileName : *(char)) -> Wave),
+  LoadWaveFromMemory : (fn(fileType : *(char), fileData : *(u8), dataSize : i32) -> Wave),
+  IsWaveValid : (fn(wave : Wave) -> bool),
+  LoadSound : (fn(fileName : *(char)) -> Sound),
+  LoadSoundFromWave : (fn(wave : Wave) -> Sound),
+  LoadSoundAlias : (fn(source : Sound) -> Sound),
+  IsSoundValid : (fn(sound : Sound) -> bool),
+  UpdateSound : (fn(sound : Sound, data : *(void), sampleCount : i32) -> unit),
+  UnloadWave : (fn(wave : Wave) -> unit),
+  UnloadSound : (fn(sound : Sound) -> unit),
+  UnloadSoundAlias : (fn(alias : Sound) -> unit),
+  ExportWave : (fn(wave : Wave, fileName : *(char)) -> bool),
+  ExportWaveAsCode : (fn(wave : Wave, fileName : *(char)) -> bool),
+  PlaySound : (fn(sound : Sound) -> unit),
+  StopSound : (fn(sound : Sound) -> unit),
+  PauseSound : (fn(sound : Sound) -> unit),
+  ResumeSound : (fn(sound : Sound) -> unit),
+  IsSoundPlaying : (fn(sound : Sound) -> bool),
+  SetSoundVolume : (fn(sound : Sound, volume : f32) -> unit),
+  SetSoundPitch : (fn(sound : Sound, pitch : f32) -> unit),
+  SetSoundPan : (fn(sound : Sound, pan : f32) -> unit),
+  WaveCopy : (fn(wave : Wave) -> Wave),
+  WaveCrop : (fn(wave : *(Wave), initFrame : i32, finalFrame : i32) -> unit),
+  WaveFormat : (fn(wave : *(Wave), sampleRate : i32, sampleSize : i32, channels : i32) -> unit),
+  LoadWaveSamples : (fn(wave : Wave) -> *(f32)),
+  UnloadWaveSamples : (fn(samples : *(f32)) -> unit),
+  LoadMusicStream : (fn(fileName : *(char)) -> Music),
+  LoadMusicStreamFromMemory : (fn(fileType : *(char), data : *(u8), dataSize : i32) -> Music),
+  IsMusicValid : (fn(music : Music) -> bool),
+  UnloadMusicStream : (fn(music : Music) -> unit),
+  PlayMusicStream : (fn(music : Music) -> unit),
+  IsMusicStreamPlaying : (fn(music : Music) -> bool),
+  UpdateMusicStream : (fn(music : Music) -> unit),
+  StopMusicStream : (fn(music : Music) -> unit),
+  PauseMusicStream : (fn(music : Music) -> unit),
+  ResumeMusicStream : (fn(music : Music) -> unit),
+  SeekMusicStream : (fn(music : Music, position : f32) -> unit),
+  SetMusicVolume : (fn(music : Music, volume : f32) -> unit),
+  SetMusicPitch : (fn(music : Music, pitch : f32) -> unit),
+  SetMusicPan : (fn(music : Music, pan : f32) -> unit),
+  GetMusicTimeLength : (fn(music : Music) -> f32),
+  GetMusicTimePlayed : (fn(music : Music) -> f32),
+  LoadAudioStream : (fn(sampleRate : u32, sampleSize : u32, channels : u32) -> AudioStream),
+  IsAudioStreamValid : (fn(stream : AudioStream) -> bool),
+  UnloadAudioStream : (fn(stream : AudioStream) -> unit),
+  UpdateAudioStream : (fn(stream : AudioStream, data : *(void), frameCount : i32) -> unit),
+  IsAudioStreamProcessed : (fn(stream : AudioStream) -> bool),
+  PlayAudioStream : (fn(stream : AudioStream) -> unit),
+  PauseAudioStream : (fn(stream : AudioStream) -> unit),
+  ResumeAudioStream : (fn(stream : AudioStream) -> unit),
+  IsAudioStreamPlaying : (fn(stream : AudioStream) -> bool),
+  StopAudioStream : (fn(stream : AudioStream) -> unit),
+  SetAudioStreamVolume : (fn(stream : AudioStream, volume : f32) -> unit),
+  SetAudioStreamPitch : (fn(stream : AudioStream, pitch : f32) -> unit),
+  SetAudioStreamPan : (fn(stream : AudioStream, pan : f32) -> unit),
+  SetAudioStreamBufferSizeDefault : (fn(size : i32) -> unit)
+);
 
 // ══════════════════════════════════════════════════════════════════════
 // Keyboard key constants
@@ -1644,7 +902,7 @@ RAYWHITE :: Color(r: u8(245), g: u8(245), b: u8(245), a: u8(255));
 // Exports
 // ══════════════════════════════════════════════════════════════════════
 
-export
+export(
   // Types
   Color, Vector2, Vector3, Vector4, Matrix, Rectangle,
   Image, Texture, RenderTexture, NPatchInfo, GlyphInfo, Font,
@@ -2037,4 +1295,4 @@ export
   SKYBLUE, BLUE, DARKBLUE, PURPLE, VIOLET, DARKPURPLE,
   BEIGE, BROWN, DARKBROWN,
   WHITE, BLACK, BLANK, MAGENTA, RAYWHITE
-;
+);

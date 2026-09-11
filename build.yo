@@ -1,4 +1,4 @@
-build :: import "std/build";
+build :: import("std/build");
 
 raylib :: build.system_library({
   name: "raylib",
