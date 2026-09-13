@@ -1,0 +1,19 @@
+# The package manifest. `yo add shd101wyy/raylib_yo` in another project writes
+# a matching entry into ITS `[dependencies]`, and resolves `import("raylib_yo")`
+# to the `default` module below.
+
+[package]
+name = "raylib_yo"
+version = "0.0.7"
+description = "Comprehensive raylib bindings for the Yo programming language"
+license = "MIT"
+
+[modules]
+# `import("raylib_yo")` — the `default` entry is what the bare package name
+# means. The root file moved here from `build.module`, which now only NAMES a
+# module in order to attach system libraries to it.
+default = "src/lib.yo"
+
+[dependencies]
+# raylib itself is a SYSTEM library, found via pkg-config by `build.system_library`
+# in build.yo — not a Yo package, so it is not declared here.

@@ -10,25 +10,45 @@ Comprehensive [raylib](https://www.raylib.com/) bindings for the [Yo](https://gi
 
 ## Installation
 
-Add `raylib_yo` as a dependency in your project's `build.yo`:
+Dependencies live in `yo.toml`, and `yo add` writes the entry for you:
 
-```yo
-build :: import "std/build";
+```bash
+yo add shd101wyy/raylib_yo
+```
 
-dep :: build.dependency({ name: "raylib_yo", url: "https://github.com/shd101wyy/raylib_yo.git", ref: "v0.0.1" });
+That records it in your `yo.toml` and pins the resolved commit in `yo.lock`:
 
-raylib :: build.system_library({ name: "raylib" });
+```toml
+[dependencies]
+raylib_yo = { git = "https://github.com/shd101wyy/raylib_yo", version = "^0.0.7" }
+```
 
-exe :: build.executable({ name: "my_app", root: "./src/main.yo" });
+Import it by package name — no paths:
+
+```rust
+{ init_window, close_window, begin_drawing, end_drawing, clear_background, Color } :: import("raylib_yo");
+```
+
+raylib itself is a **system** library, so link it in `build.yo`:
+
+```rust
+build :: import("std/build");
+
+raylib :: build.system_library({ name : "raylib" });
+
+exe :: build.executable({ name : "my_app", root : "./src/main.yo" });
 exe.link(raylib);
 ```
 
-Then fetch and build:
+Then build:
 
 ```bash
-yo fetch
 yo build
 ```
+
+`yo build` fetches declared dependencies on its own. Other commands — `yo check`,
+`yo test`, `yo compile`, `yo doc` — resolve imports but never fetch, so on a
+fresh clone run `yo install` once.
 
 ### Prerequisites
 
