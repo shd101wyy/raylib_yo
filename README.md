@@ -26,7 +26,7 @@ raylib_yo = { git = "https://github.com/shd101wyy/raylib_yo", version = "^0.0.7"
 Import it by package name — no paths:
 
 ```rust
-{ init_window, close_window, begin_drawing, end_drawing, clear_background, Color } :: import("raylib_yo");
+{ InitWindow, CloseWindow, BeginDrawing, EndDrawing, ClearBackground, Color } :: import("raylib_yo");
 ```
 
 raylib itself is a **system** library, so link it in `build.yo`:
@@ -59,26 +59,35 @@ fresh clone run `yo install` once.
 
 ## Usage
 
-```yo
-{ InitWindow, CloseWindow, WindowShouldClose, BeginDrawing, EndDrawing,
-  ClearBackground, DrawText, SetTargetFPS, RAYWHITE, DARKGRAY } :: import "raylib_yo";
+```rust
+{ InitWindow, CloseWindow, WindowShouldClose, SetTargetFPS,
+  BeginDrawing, EndDrawing, ClearBackground, DrawText,
+  RAYWHITE, DARKGRAY } :: import("raylib_yo");
 
-main :: (fn() -> unit) {
-  InitWindow(800, 450, "Hello Raylib from Yo!");
-  SetTargetFPS(60);
+// raylib's functions are extern "c", so every call site has to be
+// audit-capable. `pragma` grants the file the privilege; `unsafe(...)` marks
+// the individual calls.
+pragma(Pragma.AllowUnsafe);
 
-  while !(WindowShouldClose()), {
-    BeginDrawing();
-    ClearBackground(RAYWHITE);
-    DrawText("Hello, World!", 190, 200, 20, DARKGRAY);
-    EndDrawing();
-  };
+main :: (fn() -> unit)({
+  unsafe(InitWindow(i32(800), i32(450), "Hello Raylib from Yo!"));
+  unsafe(SetTargetFPS(i32(60)));
 
-  CloseWindow();
-};
+  while(!unsafe(WindowShouldClose()), {
+    unsafe(BeginDrawing());
+    unsafe(ClearBackground(RAYWHITE));
+    unsafe(DrawText("Hello, World!", i32(190), i32(200), i32(20), DARKGRAY));
+    unsafe(EndDrawing());
+  });
 
-export main;
+  unsafe(CloseWindow());
+});
+
+export(main);
 ```
+
+This is `src/main.yo` in this repository, give or take the window title — it is
+built and run by `yo build run`, so it cannot drift from what compiles.
 
 ## API Coverage
 
